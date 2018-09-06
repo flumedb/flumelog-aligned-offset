@@ -13,7 +13,8 @@ function frame (array, block, b) {
     //the buffer is full, pad end.
     if(c+length+4 > block-6) {
       b.fill(0, c+2, block)
-      b.writeUInt32LE(c, block-4) //write ponter to last item
+      b.writeUInt32LE(c, block-4) //write pointer to last item
+      console.log(b.toString('hex'), b.readUInt32LE(block-4))
       console.log(c, (block-1).toString(2))
       b.writeUInt16LE(block-1, c)
       return offsets
@@ -22,7 +23,7 @@ function frame (array, block, b) {
       b.writeUInt16LE(length, c)
       array[i].copy(b, c+2, 0, length)
 //      b.write(c+2, array[i])
-      b.writeUInt16LE(length, c+length+4)
+      b.writeUInt16LE(length, c+length+2)
       offsets.push(c)
       c+=length+4
     }
@@ -79,7 +80,7 @@ offsets.forEach(function (offset, i) {
       })
     })
 
-  if(false && i)
+  if(i)
     tape('previous:'+i, function (t) {
       raf.getPrevious(offset, function (err, buffer, start, length) {
         var b = buffer.slice(start, start+length)

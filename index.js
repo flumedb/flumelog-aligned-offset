@@ -1,4 +1,3 @@
-
 var RAF = require('random-access-file')
 
 module.exports = function (file, opts) {
@@ -31,12 +30,14 @@ module.exports = function (file, opts) {
     getBlock(~~(offset/block), function (err, buffer) {
       if(err) return cb(err)
       var length = buffer.readUInt16LE(block_start)
-
       //if this is last item in block, jump to start of next block.
       if(length === block-1)
         get(file_start+block, cb)
-      else
+      else {
+        if(length != buffer.readUInt16LE(block_start+length+2))
+          throw new Error('expected length at end, also')
         cb(null, buffer, block_start+2, length)
+      }
     })
   }
 
@@ -49,17 +50,18 @@ module.exports = function (file, opts) {
       var file_start = offset - block_start
       if(block_start === 0) {
         file_start = file_start - block //read the previous block!
-        raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
+        getBlock(~~(offset/block)-1, function (err, buffer) {
           block_start = buffer.readUInt32LE(block-4)
           var length = buffer.readUInt16LE(block_start-2)
-          cb(null, buffer, block_start-4-length, length)
+          cb(null, buffer, block_start-2-length, length)
         })
       }
-      else
-        raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
+      else {
+        getBlock(~~(offset/block), function (err, buffer) {
           var length = buffer.readUInt16LE(block_start-2)
-          cb(null, buffer, block_start-4-length, length)
+          cb(null, buffer, block_start-2-length, length)
         })
+      }
     }),
 
     getNext: onLoad(function (offset, cb) {
@@ -81,7 +83,7 @@ module.exports = function (file, opts) {
       if(length == null)
         waiting.push(function () { append(data, cb) })
       else {
-
+        throw new Error('not yet implemented')
       }
     }
   }
