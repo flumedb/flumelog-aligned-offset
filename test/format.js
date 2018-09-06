@@ -57,7 +57,7 @@ console.log(offsets)
 var filename = '/tmp/flumelog-raf'
 fs.writeFileSync(filename, Buffer.concat([b, b2]))
 
-var raf = FlumeLogRaf(filename)
+var raf = FlumeLogRaf(filename, {block: 1024})
 offsets.forEach(function (offset, i) {
   tape('item:'+i, function (t) {
     raf.get(offset, function (err, buffer, start, length) {
@@ -66,6 +66,19 @@ offsets.forEach(function (offset, i) {
       t.end()
     })
   })
+  if(i + 1 < offsets.length)
+    tape('next:'+i, function (t) {
+      console.log('NEXT_OFFSET', offset)
+      raf.getNext(offset, function (err, buffer, start, length) {
+        var b = buffer.slice(start, start+length)
+        raf.get(offsets[i+1], function (err, buffer, start, length) {
+          var b2 = buffer.slice(start, start+length)
+          t.deepEqual(b, b2)
+          t.end()
+        })
+      })
+    })
+
   if(false && i)
     tape('previous:'+i, function (t) {
       raf.getPrevious(offset, function (err, buffer, start, length) {
