@@ -26,7 +26,6 @@ var offsets = frame.encode(block, array, b)
 frame.encode(block, array.slice(4), b2)
   .forEach(function (offset) { offsets.push(offset+block) })
 
-console.log(offsets)
 var blocks = [b, b2]
 
 tape('records', function (t) {
@@ -80,6 +79,18 @@ offsets.forEach(function (offset, i) {
     })
 })
 
-
-
+tape('stream', function (t) {
+  var ary = []
+  raf.stream().pipe({
+    paused: false,
+    write: function (buffer) {
+      console.log(buffer)
+      ary.push(buffer)
+    },
+    end: function () {
+      t.deepEqual(ary, array)
+      t.end()
+    }
+  })
+})
 
