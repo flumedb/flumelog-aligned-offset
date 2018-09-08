@@ -8,10 +8,16 @@
     "url": "git://github.com/dominictarr/flumelog-random-access-storage.git"
   },
   "dependencies": {
+    "lru_cache": "^1.0.2",
     "push-stream": "^10.0.3",
     "random-access-file": "^2.0.1"
   },
   "devDependencies": {
+    "flumecodec": "0.0.1",
+    "flumelog-offset": "^3.3.1",
+    "looper": "^4.0.0",
+    "pull-looper": "^1.0.0",
+    "pull-stream": "^3.6.9",
     "tape": "^4.9.1"
   },
   "scripts": {
