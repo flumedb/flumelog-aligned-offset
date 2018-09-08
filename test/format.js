@@ -21,20 +21,19 @@ var array = [
 var block = 1024
 var b = Buffer.alloc(block)
 var b2 = Buffer.alloc(block)
-var offsets = frame(array, b.length, b)
+var offsets = frame.encode(block, array, b)
 
-frame(array.slice(4), b2.length, b2)
+frame.encode(block, array.slice(4), b2)
   .forEach(function (offset) { offsets.push(offset+block) })
 
 console.log(offsets)
 var blocks = [b, b2]
-var bs = require('../blocks')(block)
 
 tape('records', function (t) {
   offsets.forEach(function (offset, j) {
     var i = ~~(offset/block)
     console.log(offset, offset%block, offsets)
-    var result = bs.getRecord(blocks[i], offset%block)
+    var result = frame.getRecord(block, blocks[i], offset%block)
     t.deepEqual(
       blocks[i].slice(result.start, result.start+result.length),
       array[j]
@@ -80,6 +79,7 @@ offsets.forEach(function (offset, i) {
       })
     })
 })
+
 
 
 
