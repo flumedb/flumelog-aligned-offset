@@ -1,5 +1,6 @@
 var RAF = require('random-access-file')
 var Cache = require('lru_cache').LRUCache
+var Stream = require('./stream')
 
 module.exports = function (file, opts) {
   var cache = new Cache(1024)
@@ -55,6 +56,7 @@ module.exports = function (file, opts) {
   }
 
   return self = {
+    block: block,
     length: null,
     getBlock: onLoad(getBlock),
     get: onLoad(get),
