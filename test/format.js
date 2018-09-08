@@ -3,34 +3,7 @@ var tape = require('tape')
 var fs = require('fs')
 var FlumeLogRaf = require('../')
 
-function frame (array, block, b) {
-  var c = 0
-  var offsets = []
-  for(var i = 0; i<array.length; i++) {
-    var length = array[i].length
-    console.log(c, i, array[i])
-    console.log(c, c+length+4, block)
-    //the buffer is full, pad end.
-    if(c+length+4 > block-6) {
-      b.fill(0, c+2, block)
-      b.writeUInt32LE(c, block-4) //write pointer to last item
-      console.log(b.toString('hex'), b.readUInt32LE(block-4))
-      console.log(c, (block-1).toString(2))
-      b.writeUInt16LE(block-1, c)
-      return offsets
-    }
-    else {
-      b.writeUInt16LE(length, c)
-      array[i].copy(b, c+2, 0, length)
-//      b.write(c+2, array[i])
-      b.writeUInt16LE(length, c+length+2)
-      offsets.push(c)
-      c+=length+4
-    }
-  }
-  return offsets
-}
-
+var frame = require('../frame')
 function B (fill, length) {
   var b = Buffer.alloc(length)
   b.fill(fill)
@@ -45,15 +18,30 @@ var array = [
   B(5, 200),
   B(6, 200),
 ]
-
-var b = Buffer.alloc(1024)
-var b2 = Buffer.alloc(1024)
+var block = 1024
+var b = Buffer.alloc(block)
+var b2 = Buffer.alloc(block)
 var offsets = frame(array, b.length, b)
 
 frame(array.slice(4), b2.length, b2)
-  .forEach(function (offset) { offsets.push(offset+1024) })
+  .forEach(function (offset) { offsets.push(offset+block) })
 
 console.log(offsets)
+var blocks = [b, b2]
+var bs = require('../blocks')(block)
+
+tape('records', function (t) {
+  offsets.forEach(function (offset, j) {
+    var i = ~~(offset/block)
+    console.log(offset, offset%block, offsets)
+    var result = bs.getRecord(blocks[i], offset%block)
+    t.deepEqual(
+      blocks[i].slice(result.start, result.start+result.length),
+      array[j]
+    )
+  })
+  t.end()
+})
 
 var filename = '/tmp/flumelog-raf'
 fs.writeFileSync(filename, Buffer.concat([b, b2]))
@@ -92,5 +80,6 @@ offsets.forEach(function (offset, i) {
       })
     })
 })
+
 
 

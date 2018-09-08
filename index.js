@@ -1,11 +1,14 @@
 var RAF = require('random-access-file')
+var Cache = require('lru_cache').LRUCache
 
 module.exports = function (file, opts) {
+  var cache = new Cache(1024)
   var raf = RAF(file)
   var block = opts && opts.block || 65536
-  var length = null, waiting = []
+  var length = null, waiting = [], self
+
   raf.stat(function (err, stat) {
-    length = stat.size || 0
+    self.length = length = stat.size || 0
     if(waiting.length)
       while(waiting.length) waiting.shift()()
   })
@@ -16,15 +19,27 @@ module.exports = function (file, opts) {
       else fn(offset, cb)
     }
   }
+  // the cache slows things down a surprising amount!
+  // an entire scan in 1.76 seconds, vs > 2.5 seconds.
+  var DO_CACHE = false
+  var last_index = -1, last_buffer
+  var blocks = cache; //new WeakMap()
 
   function getBlock (i,  cb) {
+    if(i === last_index) return cb(null, last_buffer)
+    if(DO_CACHE && blocks.get(i)) return cb(null, blocks.get(i))
     var file_start = i*block
     //insert cache here...
-    raf.read(file_start, Math.min(block, length-file_start), cb)
+    raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
+      if(DO_CACHE) blocks.set(i, buffer)
+      last_index = i; last_buffer = buffer;
+      cb(err, buffer)
+    })
   }
 
   function get (offset, cb) {
     //read the whole block
+    if(offset >= length) return cb()
     var block_start = offset%block
     var file_start = offset - block_start
     getBlock(~~(offset/block), function (err, buffer) {
@@ -33,16 +48,21 @@ module.exports = function (file, opts) {
       //if this is last item in block, jump to start of next block.
       if(length === block-1)
         get(file_start+block, cb)
-      else {
-        if(length != buffer.readUInt16LE(block_start+length+2))
-          throw new Error('expected length at end, also')
-        cb(null, buffer, block_start+2, length)
-      }
+      else
+        cb(null, buffer, block_start+2, length, offset)
     })
   }
 
-  return {
-
+  return self = {
+    length: null,
+    getBlock: onLoad(getBlock),
+//    blockHasMore: function (offset) {
+//      var block_index = ~~(offset/block)
+//      var buffer = last_index === (
+//        block_index ? last_buffer :
+//        DO_CACHE ? block.get(i)
+//      )
+//    },
     get: onLoad(get),
 
     getPrevious: onLoad(function (offset, cb) {
@@ -85,7 +105,12 @@ module.exports = function (file, opts) {
       else {
         throw new Error('not yet implemented')
       }
+    },
+    stream: function (opts) {
+
+
     }
   }
 }
+
 
