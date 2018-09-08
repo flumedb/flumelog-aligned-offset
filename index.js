@@ -19,6 +19,7 @@ module.exports = function (file, opts) {
       else fn(offset, cb)
     }
   }
+
   // the cache slows things down a surprising amount!
   // an entire scan in 1.76 seconds, vs > 2.5 seconds.
   var DO_CACHE = false
@@ -56,13 +57,6 @@ module.exports = function (file, opts) {
   return self = {
     length: null,
     getBlock: onLoad(getBlock),
-//    blockHasMore: function (offset) {
-//      var block_index = ~~(offset/block)
-//      var buffer = last_index === (
-//        block_index ? last_buffer :
-//        DO_CACHE ? block.get(i)
-//      )
-//    },
     get: onLoad(get),
 
     getPrevious: onLoad(function (offset, cb) {
@@ -99,6 +93,11 @@ module.exports = function (file, opts) {
 
     }),
 
+    onReady: function (fn) {
+      if(this.length) return fn()
+      waiting.push(fn)
+    },
+
     append: function append (data, cb) {
       if(length == null)
         waiting.push(function () { append(data, cb) })
@@ -106,11 +105,10 @@ module.exports = function (file, opts) {
         throw new Error('not yet implemented')
       }
     },
+
     stream: function (opts) {
-
-
+      return new Stream(this, opts)
     }
   }
 }
-
 
