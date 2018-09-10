@@ -15,9 +15,9 @@ function print (state) {
       console.log('  '+k+':', state[k])
     else {
       console.log('  '+k+':')
-      state[k].forEach(function (b) {
-        console.log(hexpp(b))
-      })
+      console.log(state[k].map(function (b) {
+        return hexpp(b)
+      }).join('\n---\n'))
     }
   }
   console.log('}')
@@ -64,15 +64,47 @@ tape('append a buffer', function (t) {
   var state = a.append(state, B(0xA, 100))
   var state = a.append(state, B(0xB, 100))
 
+  b.writeUInt16LE(100, 38)
+  b.fill(0xA, 40, 140)
+  b.writeUInt16LE(100, 140)
+
+  b.writeUInt16LE(100, 142)
+  b.fill(0xB, 144, 244)
+  b.writeUInt16LE(100, 244)
+
+  console.log('B')
+  console.log(hexpp(b))
+  console.log('LAST')
+  console.log(hexpp(state.buffers[0]))
+
   //there should be 10 bytes remaining in the buffer.
-  
+  t.equal(state.offset, 246)
+  t.deepEqual(state.buffers[0], b)
+
+  //write a buffer that overlaps the end
+  var state = a.append(state, B(0x20, 20))
+
+  b.writeUInt16LE(255, 246)
+  b.writeUInt16LE(246, 256-4)
 
   print(state)
-  t.equal(state.offset, 246)
+
+  t.deepEqual(state.buffers[0], b)
+
+  var b2 = Buffer.alloc(block)
+
+  b2.writeUInt16LE(20, 0)
+  b2.fill(0x20, 2, 22)
+  b2.writeUInt16LE(20, 22)
+
+  t.deepEqual(state, {
+    block: block,
+    start: 0,
+    offset: 256+24, written: 0, writing: 0,
+    buffers: [b, b2]
+  })
 
   t.end()
 })
-
-
 
 
