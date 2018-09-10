@@ -9,9 +9,8 @@ module.exports = function (file, opts) {
   var length = null, waiting = [], self
 
   raf.stat(function (err, stat) {
-    self.length = length = stat.size || 0
-    if(waiting.length)
-      while(waiting.length) waiting.shift()()
+    self.length = length = stat ? stat.size : 0
+    while(waiting.length) waiting.shift()()
   })
 
   function onLoad (fn) {
