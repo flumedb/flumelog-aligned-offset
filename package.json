@@ -15,6 +15,7 @@
   "devDependencies": {
     "flumecodec": "0.0.1",
     "flumelog-offset": "^3.3.1",
+    "hexpp": "^2.0.0",
     "looper": "^4.0.0",
     "pull-looper": "^1.0.0",
     "pull-stream": "^3.6.9",
