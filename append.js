@@ -1,7 +1,7 @@
 exports.initialize = function (block, offset, buffer) {
   return {
     block: block,
-    start: 0,
+    start: offset - offset%block,
     offset: offset || 0,
     written: offset || 0,
     writing: offset || 0,
