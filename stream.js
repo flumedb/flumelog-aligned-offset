@@ -13,7 +13,6 @@ function Stream (blocks, opts) {
 }
 
 Stream.prototype._ready = function () {
-  console.log("ON READY")
   if(this.reverse) {
     if(!ltgt.upperBoundInclusive(opts))
     this.cursor = this.start = ltgt.upperBound(this.opts, this.blocks.length)
@@ -31,7 +30,6 @@ Stream.prototype._ready = function () {
     this.cursor = this.start = ltgt.lowerBound(this.opts, 0)
     this.end = ltgt.upperBound(this.opts, this.blocks.length)
     var self = this
-    console.log("GET BLOCK", ~~(self.start/self.blocks.block))
     this.blocks.getBlock(~~(self.start/self.blocks.block), function (err, buffer) {
       self._buffer = buffer
       self.resume()
@@ -46,12 +44,9 @@ Stream.prototype._next = function () {
     if(!result) {
       //move to start of next block
       this.cursor = (this.cursor - this.cursor%this.blocks.block)+this.blocks.block
-      console.log("NEXT BLOCK", this.cursor, this.blocks.length)
       if(this.cursor < this.blocks.length) {
         var self = this
-        console.log('block_i', ~~(this.cursor/this.blocks.block))
         this.blocks.getBlock(~~(this.cursor/this.blocks.block), function (err, buffer) {
-          console.log('_buffer', buffer)
           self._buffer = buffer
           self.resume()
         })
@@ -68,9 +63,8 @@ Stream.prototype._next = function () {
 
 Stream.prototype.resume = function () {
   if(this.ended) return
-  while(this.sink && !this.sink.paused) {
+  while(this.sink && !this.sink.paused && !this.ended) {
     var result = this._next()
-    console.log(result)
     if(result && result.length) this.sink.write(this._buffer.slice(result.start, result.start+result.length))
     else if(!this.live && (result ? result.length == 0 : this.cursor >= this.blocks.length)) {
       this.ended = true
@@ -85,14 +79,8 @@ Stream.prototype.resume = function () {
 Stream.prototype.abort = function () {
   //only thing to do is unsubscribe from live stream.
   //but append isn't implemented yet...
+  this.ended = true
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
-
-
-
-
-
-
-
 
