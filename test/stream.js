@@ -66,3 +66,20 @@ tape('second', function (t) {
   })
 })
 
+tape('live', function (t) {
+  var v3 = B(0x30, 30)
+  var sink = collect(function () {
+    throw new Error('live stream should not end')
+  })
+  log.stream({live: true}).pipe(sink)
+  log.append(v3, function (err) {
+    
+  })
+  log.onDrain(function () {
+    t.deepEqual(sink.array, [v, v2, v3])
+    t.end()
+  })
+})
+
+
+
