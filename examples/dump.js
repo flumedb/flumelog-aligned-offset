@@ -25,6 +25,31 @@ function end () {
 
 var types = {}
 var start = Date.now()
+raf.stream().pipe({
+  paused: false,
+  write: function (buffer) {
+      count ++
+      p = start = 0
+      p = binary.seekKey(buffer, p, _value)
+      p = binary.seekKey(buffer, p, _content)
+      var p_type = binary.seekKey(buffer, p, _type)
+//      console.log(p, p_type)
+      if(~p_type &&  binary.compareString(buffer, p_type, _post) === 0) {
+//type = binary.decode(buffer, p_type)) == 'post') {
+//        var p_root = binary.seekKey(buffer, p, _root)
+  //      if(~p_root && binary.compareString(buffer, p_root, _rootValue) === 0) {
+            found ++
+          console.log(binary.decode(buffer, start))
+          if(found > 100)
+            this.source.abort()
+    //    }
+      }
+  },
+  end: function () {
+    console.log(found, count)
+  }
+})
+return
 var next = Looper(function () {
   raf.get(offset, function (err, buffer, start, length, _offset) {
     var type
@@ -63,10 +88,5 @@ var next = Looper(function () {
   })
 })
 next()
-
-
-
-
-
 
 
