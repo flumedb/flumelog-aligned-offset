@@ -5,7 +5,7 @@ exports.initialize = function (block, offset, buffer) {
     offset: offset || 0,
     written: offset || 0,
     writing: offset || 0,
-    buffers: [buffer || Buffer.alloc(block)]
+    buffers: [buffer]
   }
 }
 
@@ -14,10 +14,9 @@ exports.append = function (state, buffer) {
   if(!last) throw new Error('no last buffer')
   var start = state.offset%state.block
   if(start + buffer.length + 4 > state.block - 6) {
-    console.log(start, state.offset, buffer.length)
     last.writeUInt16LE(state.block-1, start)
     last.writeUInt32LE(start, state.block-4)
-    state.offset = ~~(start/state.block) + state.block
+    state.offset = nextBlock(start, state.block)
     start = 0
     state.buffers.push(last = Buffer.alloc(state.block))
   }
@@ -29,7 +28,47 @@ exports.append = function (state, buffer) {
   return state
 }
 
+//to write data, get the next write block
+function startBlock (offset, block) {
+  return (offset - offset%block)
+}
+
+function nextBlock(offset, block) {
+  return startBlock(offset, block) + block
+}
 
 
+exports.writable = function (state) {
+  if(state.writing > state.written) throw new Error ('already writing')
+  //from written to the end of the block, or the offset
+  var max = Math.min(nextBlock(state.written,state.block), state.offset)
+  state.writing = max
+  return state
+}
 
+exports.getWritable = function (state) {
+  return state.buffers[0].slice(state.written-state.start, state.writing - state.start)
+}
 
+exports.written = function (state) {
+  if(state.writing <= state.written) throw new Error('not currently writing')
+  state.written = state.writing
+  if(!(state.written % state.block)) {
+    state.start += state.block
+    state.buffers.shift()
+  }
+  return state
+}
+
+exports.hasWholeWrite = function (state) {
+  //if from written to offset finishes the block
+  return nextBlock(state.written, state.block) < state.offset
+}
+
+exports.hasWrite = function (state) {
+  return state.offset > state.written
+}
+
+exports.isWriting = function (state) {
+  return state.writing > state.written
+}

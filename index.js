@@ -1,16 +1,29 @@
 var RAF = require('random-access-file')
 var Cache = require('lru_cache').LRUCache
 var Stream = require('./stream')
+var Append = require('./append')
 
 module.exports = function (file, opts) {
   var cache = new Cache(1024)
   var raf = RAF(file)
   var block = opts && opts.block || 65536
-  var length = null, waiting = [], self
+  var length = null, waiting = [], waitingDrain = [], self, state
 
   raf.stat(function (err, stat) {
-    self.length = length = stat ? stat.size : 0
-    while(waiting.length) waiting.shift()()
+    var len = stat ? stat.size : 0
+    if(len%block == 0) {
+      self.length = length = len
+      self.appendState = state = Append.initialize(block, length, Buffer.alloc(block))
+      while(waiting.length) waiting.shift()()
+    } else {
+      raf.read(len - len%block, Math.min(block, len), function (err, _buffer) {
+        var buffer = Buffer.alloc(block)
+        _buffer.copy(buffer)
+        self.length = length = len
+        self.appendState = state = Append.initialize(block, length, buffer)
+        while(waiting.length) waiting.shift()()
+      })
+    }
   })
 
   function onLoad (fn) {
@@ -31,6 +44,11 @@ module.exports = function (file, opts) {
     if(DO_CACHE && blocks.get(i)) return cb(null, blocks.get(i))
     var file_start = i*block
     //insert cache here...
+    console.log("GET?", file_start, state.start)
+    if(file_start == state.start)
+      return cb(null, state.buffers[0])
+
+    console.log("GET", file_start, Math.min(block, length-file_start))
     raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
       if(DO_CACHE) blocks.set(i, buffer)
       last_index = i; last_buffer = buffer;
@@ -54,9 +72,38 @@ module.exports = function (file, opts) {
     })
   }
 
+  var write_timer
+  function next_write () {
+    state = Append.writable(state)
+    var buffer = Append.getWritable(state)
+    console.log('Write', buffer, state)
+    raf.write(state.written, buffer, function (err) {
+      state = Append.written(state)
+      schedule_next_write()
+    })
+  }
+
+  function schedule_next_write () {
+    if(Append.hasWholeWrite(state))
+      next()
+    else if(Append.hasWrite(state)) {
+      clearTimeout(write_timer)
+      write_timer = setTimeout(next_write, 20)
+    } else
+      while(waitingDrain.length)
+        waitingDrain.shift()()
+  }
+
+  function append(data, cb) {
+    state = Append.append(state, data)
+    schedule_next_write()
+    cb()
+  }
+
   return self = {
     block: block,
     length: null,
+    appendState: state,
     getBlock: onLoad(getBlock),
     get: onLoad(get),
 
@@ -95,21 +142,26 @@ module.exports = function (file, opts) {
     }),
 
     onReady: function (fn) {
-      if(this.length) return fn()
+      if(this.length != null) return fn()
       waiting.push(fn)
     },
 
-    append: function append (data, cb) {
-      if(length == null)
-        waiting.push(function () { append(data, cb) })
-      else {
-        throw new Error('not yet implemented')
-      }
-    },
+    append: onLoad(append),
 
     stream: function (opts) {
       return new Stream(this, opts)
+    },
+
+    onDrain: function (fn) {
+      if(!Append.hasWrite(state)) fn()
+      else waitingDrain.push(fn)
     }
   }
 }
+
+
+
+
+
+
 
