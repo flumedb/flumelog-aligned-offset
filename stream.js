@@ -5,6 +5,7 @@ module.exports = Stream
 function Stream (blocks, opts) {
   opts = opts || {}
   this.reverse = !!opts.reverse
+  this.live = !!opts.live
   this.blocks = blocks
   this.cursor = this.start = this.end = -1
   var self = this
@@ -38,7 +39,7 @@ Stream.prototype._ready = function () {
 }
 
 Stream.prototype._next = function () {
-  if(!this._buffer) return
+  if(!this._buffer || this.cursor >= this.blocks.length) return
   if(!this.reverse) {
     var result = frame.getRecord(this.blocks.block, this._buffer, this.cursor%this.blocks.block)
     if(!result) {
@@ -80,7 +81,13 @@ Stream.prototype.abort = function () {
   //only thing to do is unsubscribe from live stream.
   //but append isn't implemented yet...
   this.ended = true
+
+  this.blocks.streams.splice(this.blocks.streams.indexOf(this), 1)
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
+
+
+
+
 

@@ -74,7 +74,6 @@ module.exports = function (file, opts) {
   function next_write () {
     state = Append.writable(state)
     var buffer = Append.getWritable(state)
-    console.log('Write', buffer, state)
     raf.write(state.written, buffer, function (err) {
       state = Append.written(state)
       schedule_next_write()
@@ -87,13 +86,21 @@ module.exports = function (file, opts) {
     else if(Append.hasWrite(state)) {
       clearTimeout(write_timer)
       write_timer = setTimeout(next_write, 20)
-    } else
+    } else {
+      //TODO: some views could be eager, updating before the log is fully persisted
+      //      just don't write the view data until the log is confirmed.
+      if(self.streams.length) {
+        for(var i = 0; i < self.streams.length; i++)
+          self.streams[i].resume()
+      }
       while(waitingDrain.length)
         waitingDrain.shift()()
+    }
   }
 
   function append(data, cb) {
     state = Append.append(state, data)
+    self.length = length = state.offset
     schedule_next_write()
     cb()
   }
@@ -147,8 +154,13 @@ module.exports = function (file, opts) {
     append: onLoad(append),
 
     stream: function (opts) {
-      return new Stream(this, opts)
+      var stream = new Stream(this, opts)
+      if(opts && opts.live)
+        this.streams.push(stream)
+      return stream
     },
+
+    streams: [],
 
     onDrain: function (fn) {
       if(!Append.hasWrite(state)) fn()
@@ -156,12 +168,4 @@ module.exports = function (file, opts) {
     }
   }
 }
-
-
-
-
-
-
-
-
 
