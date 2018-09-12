@@ -40,8 +40,9 @@ module.exports = {
     if(length === block - 1)
       return null
     else {
-      if(buffer.readUInt16LE(start+2+length) != length)
-        throw new Error('expected matching length at end, expected:'+length+', was:'+buffer.readUInt16LE(start+2+length))
+      var _length = buffer.readUInt16LE(start+2+length)
+      if(_length != length)
+        throw new Error('expected matching length at end, expected:'+length+', was:'+_length)
       result.start = start+2
       result.length = length
       return result
