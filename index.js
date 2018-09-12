@@ -44,11 +44,9 @@ module.exports = function (file, opts) {
     if(DO_CACHE && blocks.get(i)) return cb(null, blocks.get(i))
     var file_start = i*block
     //insert cache here...
-    console.log("GET?", file_start, state.start)
     if(file_start == state.start)
       return cb(null, state.buffers[0])
 
-    console.log("GET", file_start, Math.min(block, length-file_start))
     raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
       if(DO_CACHE) blocks.set(i, buffer)
       last_index = i; last_buffer = buffer;
@@ -158,6 +156,8 @@ module.exports = function (file, opts) {
     }
   }
 }
+
+
 
 
 
