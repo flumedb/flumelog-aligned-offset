@@ -25,7 +25,7 @@ function print (state) {
 
 tape('append a buffer', function (t) {
   var block = 256
-  var state = a.initialize(block, 0)
+  var state = a.initialize(block, 0, Buffer.alloc(block))
   t.deepEqual({
     block: block,
     start: 0,
@@ -104,7 +104,43 @@ tape('append a buffer', function (t) {
     buffers: [b, b2]
   })
 
+
+  t.ok(a.hasWholeWrite(state))
+  var writable = a.getWritable(state = a.writable(state))
+  t.deepEqual(writable, state.buffers[0])
+
+  t.deepEqual(state, {
+    block: block,
+    start: 0,
+    offset: 256+24, written: 0, writing: 256,
+    buffers: [b, b2]
+  })
+
+  state = a.written(state)
+
+  t.deepEqual(state, {
+    block: block,
+    start: 256,
+    offset: 256+24, written: 256, writing: 256,
+    buffers: [b2]
+  })
+
+  t.notOk(a.hasWholeWrite(state))
+  var writable = a.getWritable(state = a.writable(state))
+  t.equal(state.writing - state.written, 24)
+  t.deepEqual(writable, b2.slice(0, 24))
+  console.log(writable)
+  state = a.written(state)
+
+  t.deepEqual(state, {
+    block: block,
+    start: 256,
+    offset: 256+24,
+    written: 256+24,
+    writing: 256+24,
+    buffers: [b2]
+  })
+
   t.end()
 })
-
 
