@@ -53,6 +53,7 @@ offsets.forEach(function (offset, i) {
       t.end()
     })
   })
+  /*
   if(i + 1 < offsets.length)
     tape('next:'+i, function (t) {
       console.log('NEXT_OFFSET', offset)
@@ -65,7 +66,7 @@ offsets.forEach(function (offset, i) {
         })
       })
     })
-
+  */
   if(i)
     tape('previous:'+i, function (t) {
       raf.getPrevious(offset, function (err, buffer, start, length) {
