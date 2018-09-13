@@ -16,7 +16,9 @@ module.exports = function (file, opts) {
       self.appendState = state = Append.initialize(block, length, Buffer.alloc(block))
       while(waiting.length) waiting.shift()()
     } else {
-      raf.read(len - len%block, Math.min(block, len), function (err, _buffer) {
+      var start = len - len%block
+      raf.read(len - len%block, Math.min(block, len%block), function (err, _buffer) {
+        if(err) throw err
         var buffer = Buffer.alloc(block)
         _buffer.copy(buffer)
         self.length = length = len
@@ -75,15 +77,18 @@ module.exports = function (file, opts) {
     state = Append.writable(state)
     var buffer = Append.getWritable(state)
     raf.write(state.written, buffer, function (err) {
+      console.log('written', state)
       state = Append.written(state)
       schedule_next_write()
     })
   }
 
   function schedule_next_write () {
-    if(Append.hasWholeWrite(state))
-      next()
-    else if(Append.hasWrite(state)) {
+    if(Append.isWriting(state)) return
+    if(Append.hasWholeWrite(state)) {
+      clearTimeout(write_timer)
+      next_write()
+    } else if(Append.hasWrite(state)) {
       clearTimeout(write_timer)
       write_timer = setTimeout(next_write, 20)
     } else {
