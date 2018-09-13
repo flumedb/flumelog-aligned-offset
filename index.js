@@ -31,7 +31,7 @@ module.exports = function (file, opts) {
   function onLoad (fn) {
     return function (offset, cb) {
       if(length === null) waiting.push(function () { fn(offset, cb) })
-      else fn(offset, cb)
+      else return fn(offset, cb)
     }
   }
 
@@ -42,10 +42,14 @@ module.exports = function (file, opts) {
   var blocks = cache; //new WeakMap()
 
   function getBlock (i,  cb) {
-    if(i === last_index) return cb(null, last_buffer)
-    if(DO_CACHE && blocks.get(i)) return cb(null, blocks.get(i))
+    if(i === last_index)
+      return cb(null, last_buffer)
+    if(DO_CACHE && blocks.get(i))
+      return cb(null, blocks.get(i))
+
     var file_start = i*block
     //insert cache here...
+
     if(file_start == state.start)
       return cb(null, state.buffers[0])
 
@@ -77,7 +81,6 @@ module.exports = function (file, opts) {
     state = Append.writable(state)
     var buffer = Append.getWritable(state)
     raf.write(state.written, buffer, function (err) {
-      console.log('written', state)
       state = Append.written(state)
       schedule_next_write()
     })
@@ -96,7 +99,8 @@ module.exports = function (file, opts) {
       //      just don't write the view data until the log is confirmed.
       if(self.streams.length) {
         for(var i = 0; i < self.streams.length; i++)
-          self.streams[i].resume()
+          if(!self.streams[i].ended)
+            self.streams[i].resume()
       }
       while(waitingDrain.length)
         waitingDrain.shift()()
@@ -136,6 +140,7 @@ module.exports = function (file, opts) {
       }
     }),
 
+  /*
     getNext: onLoad(function (offset, cb) {
       var block_start = offset%block
       var file_start = offset - block_start
@@ -150,7 +155,7 @@ module.exports = function (file, opts) {
       })
 
     }),
-
+  */
     onReady: function (fn) {
       if(this.length != null) return fn()
       waiting.push(fn)
@@ -167,10 +172,12 @@ module.exports = function (file, opts) {
 
     streams: [],
 
-    onDrain: function (fn) {
+    onDrain: onLoad(function (fn) {
       if(!Append.hasWrite(state)) fn()
       else waitingDrain.push(fn)
-    }
+    })
   }
 }
+
+
 
