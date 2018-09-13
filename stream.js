@@ -22,11 +22,9 @@ Stream.prototype._ready = function () {
     this.cursor = this.start = ltgt.lowerBound(this.opts, 0)
     this.end = ltgt.upperBound(this.opts, this.blocks.length)
   }
-  
   var self = this
   this.blocks.getBlock(~~(self.start/self.blocks.block), function (err, buffer) {
     self._buffer = buffer
-    console.log(buffer)
     self.resume()
   })
 }
@@ -43,10 +41,17 @@ Stream.prototype._next = function () {
       this.cursor = (this.cursor - this.cursor%this.blocks.block)+this.blocks.block
       if(this.cursor < this.blocks.length) {
         var self = this
+        var async = false
+        //sometimes this is sync, which means we can actually return instead of cb
+        //if we always cb, we can get two resume loops going, which is weird.
+        var async = false, returned = false
         this.blocks.getBlock(~~(this.cursor/this.blocks.block), function (err, buffer) {
           self._buffer = buffer
-          self.resume()
+          returned = true
+          if(async) self.resume()
         })
+        async = true
+        if(returned) return self._next()
       }
     }
   }
@@ -81,12 +86,14 @@ Stream.prototype.resume = function () {
     var result = this._next()
     if(result && result.length) this.sink.write(this._buffer.slice(result.start, result.start+result.length))
     else if(!this.live && (result ? result.length == 0 : this.isAtEnd())) {
-      this.ended = true
+      if(this.ended) throw new Error('already ended')
+      this.abort()
       this.sink.end()
       return
     }
     else
       return
+
   }
 }
 
@@ -94,14 +101,10 @@ Stream.prototype.abort = function () {
   //only thing to do is unsubscribe from live stream.
   //but append isn't implemented yet...
   this.ended = true
-
   this.blocks.streams.splice(this.blocks.streams.indexOf(this), 1)
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
-
-
-
 
 
 
