@@ -55,10 +55,12 @@ module.exports = {
   },
 
   getPreviousRecord: function (block, buffer, start) {
+    if(start == 0) return
     var length = buffer.readUInt16LE(start-2)
-    if(start == 0) return -1
     result.start = start - 2 - length
     result.length = length
     return result
   }
 }
+
+
