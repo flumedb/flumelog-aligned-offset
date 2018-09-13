@@ -42,6 +42,7 @@ exports.writable = function (state) {
   if(state.writing > state.written) throw new Error ('already writing')
   //from written to the end of the block, or the offset
   var max = Math.min(nextBlock(state.written,state.block), state.offset)
+  if(max == state.written) throw new Error('null write')
   state.writing = max
   return state
 }
