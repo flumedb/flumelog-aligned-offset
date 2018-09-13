@@ -13,10 +13,11 @@ exports.append = function (state, buffer) {
   var last = state.buffers[state.buffers.length-1]
   if(!last) throw new Error('no last buffer')
   var start = state.offset%state.block
+  var _offset = state.offset
   if(start + buffer.length + 4 > state.block - 6) {
     last.writeUInt16LE(state.block-1, start)
     last.writeUInt32LE(start, state.block-4)
-    state.offset = nextBlock(start, state.block)
+    state.offset = nextBlock(state.offset, state.block)
     start = 0
     state.buffers.push(last = Buffer.alloc(state.block))
   }
@@ -24,6 +25,8 @@ exports.append = function (state, buffer) {
   buffer.copy(last, start+2)
   last.writeUInt16LE(buffer.length, start+2+buffer.length)
   state.offset += 4+buffer.length
+
+  if(state.offset <= _offset) throw new Error('offset must grow, was:'+_offset+', is now:'+state.offset)
 
   return state
 }
@@ -41,8 +44,8 @@ function nextBlock(offset, block) {
 exports.writable = function (state) {
   if(state.writing > state.written) throw new Error ('already writing')
   //from written to the end of the block, or the offset
-  var max = Math.min(nextBlock(state.written,state.block), state.offset)
-  if(max == state.written) throw new Error('null write')
+  var max = Math.min(nextBlock(state.written, state.block), state.offset)
+  if(max <= state.written) throw new Error('null write')
   state.writing = max
   return state
 }
@@ -73,3 +76,4 @@ exports.hasWrite = function (state) {
 exports.isWriting = function (state) {
   return state.writing > state.written
 }
+
