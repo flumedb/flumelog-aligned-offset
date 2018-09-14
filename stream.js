@@ -20,16 +20,22 @@ function Stream (blocks, opts) {
 }
 
 Stream.prototype._ready = function () {
-  console.log(this.opts)
   if(this.reverse) {
     this.cursor = this.start = ltgt.upperBound(this.opts, this.blocks.length)
     this.end = ltgt.lowerBound(this.opts, 0)
   }
   else {
     this.cursor = this.start = ltgt.lowerBound(this.opts, 0)
-    console.log("gt", this.cursor)
+    if(ltgt.lowerBoundExclusive(this.opts))
+      this.skip = 1
     this.end = ltgt.upperBound(this.opts, this.blocks.length)
   }
+
+  this.min = ltgt.lowerBound(this.opts, null)
+  if(ltgt.lowerBoundInclusive(this.opts)) this.min_inclusive = this.min
+  this.max = ltgt.upperBound(this.opts, null)
+  if(ltgt.upperBoundInclusive(this.opts)) this.max_inclusive = this.max
+
   var self = this
   this.blocks.getBlock(~~(self.start/self.blocks.block), function (err, buffer) {
     self._buffer = buffer
@@ -103,11 +109,16 @@ Stream.prototype.resume = function () {
   while(this.sink && !this.sink.paused && !this.ended) {
     var result = this._next()
     if(result && result.length) {
-//      if(true || (++ this.count) > this.skip)
+      if(
+        (++ this.count) > this.skip &&
+        (this.min === null || this.min < result.offset || this.min_inclusive === result.offset) &&
+        (this.max === null || this.max > result.offset || this.max_inclusive === result.offset)
+      )
         this._format(result)
-//      if(false && this.limit > 0 && this.count >= this.limit + this.skip) {
-//        this.abort(); this.sink.end()
- //     }
+      else
+        if(false && this.limit > 0 && this.count >= this.limit + this.skip) {
+          this.abort(); this.sink.end()
+      }
     }
     else if(!this.live && (result ? result.length == 0 : this.isAtEnd())) {
       if(this.ended) throw new Error('already ended')
@@ -129,5 +140,4 @@ Stream.prototype.abort = function () {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
-
 
