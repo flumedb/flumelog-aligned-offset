@@ -8,6 +8,9 @@ function Stream (blocks, opts) {
   this.live = !!opts.live
   this.blocks = blocks
   this.cursor = this.start = this.end = -1
+  this.seqs = opts.seqs !== false
+  this.values = opts.values !== false
+
   var self = this
   this.opts = opts
   this.blocks.onReady(this._ready.bind(this))
@@ -31,6 +34,7 @@ Stream.prototype._ready = function () {
 
 Stream.prototype._next = function () {
   if(!this._buffer || this.start === -1 || this.isAtEnd()) return
+  var next_block
   if(!this.reverse) {
     var result = frame.getRecord(this.blocks.block, this._buffer, this.cursor%this.blocks.block)
     if(result) {
@@ -40,24 +44,18 @@ Stream.prototype._next = function () {
       //move to start of next block
       this.cursor = (this.cursor - this.cursor%this.blocks.block)+this.blocks.block
       if(this.cursor < this.blocks.length) {
-        var self = this
-        var async = false
         //sometimes this is sync, which means we can actually return instead of cb
         //if we always cb, we can get two resume loops going, which is weird.
-        var async = false, returned = false
-        this.blocks.getBlock(~~(this.cursor/this.blocks.block), function (err, buffer) {
-          self._buffer = buffer
-          returned = true
-          if(async) self.resume()
-        })
-        async = true
-        if(returned) return self._next()
+        next_block = ~~(this.cursor/this.blocks.block)
       }
+      else
+        return
     }
   }
   else {
     if(this.cursor == 0) {
       this.cursor --
+      return
     }
     else if(this.cursor % this.blocks.block) {
       var result = frame.getPreviousRecord(this.blocks.block, this._buffer, this.cursor%this.blocks.block)
@@ -65,26 +63,42 @@ Stream.prototype._next = function () {
       return result
     }
     else {
-      var self = this
-      this.blocks.getBlock(~~(this.cursor/this.blocks.block)-1, function (err, buffer) {
-        self._buffer = buffer
-        //point at padding in block
-        self.cursor = buffer.readUInt32LE(this.blocks.block-4)
-        self.resume()
-      })
+      next_block = ~~(this.cursor/this.blocks.block)-1
     }
   }
+  var self = this, async = false, returned = false
+  this.blocks.getBlock(next_block, function (err, buffer) {
+    self._buffer = buffer
+    returned = true
+    if(self.reverse)
+        self.cursor = self.blocks.block*next_block + buffer.readUInt32LE(self.blocks.block-4)
+    if(async) self.resume()
+  })
+  async = true
+  if(returned) return self._next()
 }
 
 Stream.prototype.isAtEnd = function () {
   return this.reverse ? this.cursor < 0 : this.cursor >= this.blocks.length
 }
 
+
+Stream.prototype._format = function (result) {
+  if(this.values) {
+    var value = this._buffer.slice(result.start, result.start + result.length)
+    if(this.seqs) this.sink.write({seqs: this.cursor, value: value})
+    else this.sink.write(value)
+  }
+  else
+    this.sink.write(this.cursor)
+}
+
 Stream.prototype.resume = function () {
   if(this.ended) return
   while(this.sink && !this.sink.paused && !this.ended) {
     var result = this._next()
-    if(result && result.length) this.sink.write(this._buffer.slice(result.start, result.start+result.length))
+    if(result && result.length)
+      this._format(result)
     else if(!this.live && (result ? result.length == 0 : this.isAtEnd())) {
       if(this.ended) throw new Error('already ended')
       this.abort()
@@ -105,6 +119,4 @@ Stream.prototype.abort = function () {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
-
-
 
