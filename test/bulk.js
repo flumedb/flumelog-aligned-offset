@@ -32,7 +32,7 @@ function collect(cb) {
 }
 
 tape('stream', function (t) {
-  raf.stream().pipe(collect(function (err, ary) {
+  raf.stream({seqs: false}).pipe(collect(function (err, ary) {
     t.deepEqual(ary, a)
     t.end()
   }))
@@ -41,12 +41,18 @@ tape('stream', function (t) {
 tape('stream, reload', function (t) {
   var raf2 = RAF(filename, {block: 64*1024})
   var ary = []
-  raf.stream().pipe(collect(function (err, ary) {
+  raf.stream({seqs: false}).pipe(collect(function (err, ary) {
     t.notOk(err)
     t.deepEqual(ary, a)
     t.end()
   }))
 })
 
-
+tape('stream, reverse', function (t) {
+  raf.stream({reverse: true, seqs: false}).pipe(collect(function (err, ary) {
+    t.equal(ary.length, a.length)
+    t.deepEqual(ary.reverse(), a)
+    t.end()
+  }))
+})
 

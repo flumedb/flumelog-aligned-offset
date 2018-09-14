@@ -82,7 +82,7 @@ offsets.forEach(function (offset, i) {
 
 tape('stream', function (t) {
   var ary = []
-  raf.stream().pipe({
+  raf.stream({seqs: false}).pipe({
     paused: false,
     write: function (buffer) {
       console.log(buffer)

@@ -25,7 +25,7 @@ function collect (cb) {
 }
 
 tape('empty', function (t) {
-  log.stream().pipe({
+  log.stream({seqs: false}).pipe({
     paused: false,
     write: function () { throw new Error('should be empty') },
     end: t.end
@@ -36,7 +36,7 @@ var v1 = B(0x10, 10)
 tape('single', function (t) {
   log.append(v1, function (err) {
     t.notOk(err)
-    log.stream().pipe(collect(function (err, ary) {
+    log.stream({seqs: false}).pipe(collect(function (err, ary) {
       t.notOk(err)
       t.deepEqual(ary, [v1])
       log.onDrain(t.end)
@@ -47,7 +47,7 @@ tape('single', function (t) {
 var log2
 tape('single, reload', function (t) {
   log2 = FlumeLogRaf('/tmp/test-flumelog-raf', {block: 64*1024})
-  log2.stream().pipe(collect(function (err, ary) {
+  log2.stream({seqs: false}).pipe(collect(function (err, ary) {
     t.notOk(err)
     t.deepEqual(ary, [v1])
     t.end()
@@ -58,7 +58,7 @@ var v2 = B(0x20, 20)
 tape('second', function (t) {
   log.append(v2, function (err) {
     t.notOk(err)
-    log.stream().pipe(collect(function (err, ary) {
+    log.stream({seqs: false}).pipe(collect(function (err, ary) {
       t.notOk(err)
       t.deepEqual(ary, [v1, v2])
       log.onDrain(t.end)
@@ -71,7 +71,7 @@ tape('live', function (t) {
   var sink = collect(function () {
     throw new Error('live stream should not end')
   })
-  log.stream({live: true}).pipe(sink)
+  log.stream({live: true, seqs: false}).pipe(sink)
   log.append(v3, function (err) {
     
   })
@@ -82,7 +82,7 @@ tape('live', function (t) {
 })
 
 tape('reverse', function (t) {
-  log.stream({reverse:true}).pipe(collect(function (err, ary) {
+  log.stream({reverse:true, seqs: false}).pipe(collect(function (err, ary) {
     t.notOk(err)
     t.deepEqual(ary, [v3, v2, v1])
     t.end()
