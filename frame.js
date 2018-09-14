@@ -17,8 +17,6 @@ module.exports = {
         b.writeUInt16LE(length, c)
         array[i].copy(b, c+2, 0, length)
         b.writeUInt16LE(length, c+length+2)
-        if(c+length+2 > 65530)
-          console.log(c+length+2)
         offsets.push(c)
         c+=length+4
       }
@@ -62,5 +60,6 @@ module.exports = {
     return result
   }
 }
+
 
 
