@@ -10,6 +10,9 @@ function Stream (blocks, opts) {
   this.cursor = this.start = this.end = -1
   this.seqs = opts.seqs !== false
   this.values = opts.values !== false
+  this.skip = opts.skip || 0
+  this.limit = opts.limit || 0
+  this.count = 0
 
   var self = this
   this.opts = opts
@@ -17,12 +20,14 @@ function Stream (blocks, opts) {
 }
 
 Stream.prototype._ready = function () {
+  console.log(this.opts)
   if(this.reverse) {
     this.cursor = this.start = ltgt.upperBound(this.opts, this.blocks.length)
     this.end = ltgt.lowerBound(this.opts, 0)
   }
   else {
     this.cursor = this.start = ltgt.lowerBound(this.opts, 0)
+    console.log("gt", this.cursor)
     this.end = ltgt.upperBound(this.opts, this.blocks.length)
   }
   var self = this
@@ -36,7 +41,7 @@ Stream.prototype._next = function () {
   if(!this._buffer || this.start === -1 || this.isAtEnd()) return
   var next_block
   if(!this.reverse) {
-    var result = frame.getRecord(this.blocks.block, this._buffer, this.cursor%this.blocks.block)
+    var result = frame.getRecord(this.blocks.block, this._buffer, this.cursor)
     if(result) {
       this.cursor += result.length + 4
       return result
@@ -86,19 +91,24 @@ Stream.prototype.isAtEnd = function () {
 Stream.prototype._format = function (result) {
   if(this.values) {
     var value = this._buffer.slice(result.start, result.start + result.length)
-    if(this.seqs) this.sink.write({seqs: this.cursor, value: value})
+    if(this.seqs) this.sink.write({seq: result.offset, value: value})
     else this.sink.write(value)
   }
   else
-    this.sink.write(this.cursor)
+    this.sink.write(result.offset)
 }
 
 Stream.prototype.resume = function () {
   if(this.ended) return
   while(this.sink && !this.sink.paused && !this.ended) {
     var result = this._next()
-    if(result && result.length)
-      this._format(result)
+    if(result && result.length) {
+//      if(true || (++ this.count) > this.skip)
+        this._format(result)
+//      if(false && this.limit > 0 && this.count >= this.limit + this.skip) {
+//        this.abort(); this.sink.end()
+ //     }
+    }
     else if(!this.live && (result ? result.length == 0 : this.isAtEnd())) {
       if(this.ended) throw new Error('already ended')
       this.abort()
@@ -119,4 +129,5 @@ Stream.prototype.abort = function () {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
+
 

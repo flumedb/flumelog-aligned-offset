@@ -1,4 +1,4 @@
-var result = {start: -1, length: -1}
+var result = {start: -1, length: -1, offset: -1}
 module.exports = {
   encode: function (block, array, b) {
     var c = 0
@@ -33,7 +33,8 @@ module.exports = {
   },
 
   //getRecord(buffer, 0) for first record in block
-  getRecord: function (block, buffer, start) {
+  getRecord: function (block, buffer, offset) {
+    var start = offset % block
     var length = buffer.readUInt16LE(start)
     if(length === block - 1)
       return null
@@ -41,6 +42,7 @@ module.exports = {
       var _length = buffer.readUInt16LE(start+2+length)
       if(_length != length)
         throw new Error('expected matching length at end, expected:'+length+', was:'+_length)
+      result.offset = offset
       result.start = start+2
       result.length = length
       return result
@@ -55,6 +57,7 @@ module.exports = {
   getPreviousRecord: function (block, buffer, start) {
     if(start == 0) return
     var length = buffer.readUInt16LE(start-2)
+    result.offset = start
     result.start = start - 2 - length
     result.length = length
     return result
