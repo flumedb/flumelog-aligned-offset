@@ -49,20 +49,19 @@ module.exports = {
     }
   },
 
-  getLastRecord: function (block, buffer) {
+  getLastRecord: function (block, buffer, offset) {
     var start = buffer.readUInt32LE(block - 4)
-    return exports.getPreviousRecord(block, buffer, start)
+    return module.exports.getPreviousRecord(block, buffer, offset-block + start)
   },
 
-  getPreviousRecord: function (block, buffer, start) {
+  getPreviousRecord: function (block, buffer, offset) {
+    var start = offset%block
     if(start == 0) return
     var length = buffer.readUInt16LE(start-2)
-    result.offset = start
-    result.start = start - 2 - length
-    result.length = length
-    return result
+    return offset - length - 4
   }
 }
+
 
 
 
