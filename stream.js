@@ -7,7 +7,7 @@ function Stream (blocks, opts) {
   this.reverse = !!opts.reverse
   this.live = !!opts.live
   this.blocks = blocks
-  this.cursor = this.start = this.end = -1
+  this.cursor = -1 //this.start = this.end = -1
   this.seqs = opts.seqs !== false
   this.values = opts.values !== false
   this.limit = opts.limit || 0
@@ -21,15 +21,6 @@ function Stream (blocks, opts) {
 }
 
 Stream.prototype._ready = function () {
-  if(this.reverse) {
-    this.cursor = this.start = ltgt.upperBound(this.opts, this.blocks.length)
-    this.end = ltgt.lowerBound(this.opts, 0)
-  }
-  else {
-    this.cursor = this.start = ltgt.lowerBound(this.opts, 0)
-    this.end = ltgt.upperBound(this.opts, this.blocks.length)
-  }
-
   this.min = ltgt.lowerBound(this.opts, null)
   if(ltgt.lowerBoundInclusive(this.opts))
     this.min_inclusive = this.min
@@ -38,8 +29,14 @@ Stream.prototype._ready = function () {
   if(ltgt.upperBoundInclusive(this.opts))
     this.max_inclusive = this.max
 
+  //note: cursor has default of the current length or zero.
+  if(this.reverse)
+    this.cursor = ltgt.upperBound(this.opts, this.blocks.length)
+  else
+    this.cursor = ltgt.lowerBound(this.opts, 0)
+
   var self = this
-  this.blocks.getBlock(~~(self.start/self.blocks.block), function (err, buffer) {
+  this.blocks.getBlock(~~(this.cursor/self.blocks.block), function (err, buffer) {
     self._buffer = buffer
     //reversing cursor starts at length, which won't be a thing.
     self.resume()
@@ -47,7 +44,7 @@ Stream.prototype._ready = function () {
 }
 
 Stream.prototype._next = function () {
-  if(!this._buffer || this.start === -1 || this.isAtEnd()) return
+  if(!this._buffer || this.cursor === -1 || this.isAtEnd()) return
   var block = this.blocks.block
   var next_block
   if(!this.reverse) {
