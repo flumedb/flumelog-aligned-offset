@@ -10,7 +10,6 @@ function Stream (blocks, opts) {
   this.cursor = this.start = this.end = -1
   this.seqs = opts.seqs !== false
   this.values = opts.values !== false
-//  this.skip = opts.skip || 0
   this.limit = opts.limit || 0
   this.count = 0
 
@@ -25,22 +24,19 @@ Stream.prototype._ready = function () {
   if(this.reverse) {
     this.cursor = this.start = ltgt.upperBound(this.opts, this.blocks.length)
     this.end = ltgt.lowerBound(this.opts, 0)
-//    if(ltgt.upperBoundExclusive(this.opts))
-//      this.skip = 1
-
   }
   else {
     this.cursor = this.start = ltgt.lowerBound(this.opts, 0)
-//    if(ltgt.lowerBoundExclusive(this.opts))
-//      this.skip = 1
     this.end = ltgt.upperBound(this.opts, this.blocks.length)
   }
 
   this.min = ltgt.lowerBound(this.opts, null)
-  if(ltgt.lowerBoundInclusive(this.opts)) this.min_inclusive = this.min
+  if(ltgt.lowerBoundInclusive(this.opts))
+    this.min_inclusive = this.min
 
   this.max = ltgt.upperBound(this.opts, null)
-  if(ltgt.upperBoundInclusive(this.opts)) this.max_inclusive = this.max
+  if(ltgt.upperBoundInclusive(this.opts))
+    this.max_inclusive = this.max
 
   var self = this
   this.blocks.getBlock(~~(self.start/self.blocks.block), function (err, buffer) {
@@ -126,14 +122,13 @@ Stream.prototype.resume = function () {
       var o = result.offset
       this.count++
       if(
-        //(++ this.count) > this.skip &&
         (this.min === null || this.min < o || this.min_inclusive === o) &&
         (this.max === null || this.max > o || this.max_inclusive === o)
       ) {
         this._format(result)
       }
       else {
-        if(this.limit > 0 && this.count >= this.limit/* + this.skip*/) {
+        if(this.limit > 0 && this.count >= this.limit) {
           this.abort(); this.sink.end()
         }
       }
@@ -158,6 +153,4 @@ Stream.prototype.abort = function () {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
-
-
 
