@@ -14,6 +14,8 @@ function Stream (blocks, opts) {
   this.limit = opts.limit || 0
   this.count = 0
 
+  this.min = this.max = this.min_inclusive = this.max_inclusive = null
+
   var self = this
   this.opts = opts
   this.blocks.onReady(this._ready.bind(this))
@@ -23,6 +25,9 @@ Stream.prototype._ready = function () {
   if(this.reverse) {
     this.cursor = this.start = ltgt.upperBound(this.opts, this.blocks.length)
     this.end = ltgt.lowerBound(this.opts, 0)
+    if(ltgt.upperBoundExclusive(this.opts))
+      this.skip = 1
+
   }
   else {
     this.cursor = this.start = ltgt.lowerBound(this.opts, 0)
@@ -33,64 +38,73 @@ Stream.prototype._ready = function () {
 
   this.min = ltgt.lowerBound(this.opts, null)
   if(ltgt.lowerBoundInclusive(this.opts)) this.min_inclusive = this.min
+
   this.max = ltgt.upperBound(this.opts, null)
   if(ltgt.upperBoundInclusive(this.opts)) this.max_inclusive = this.max
 
   var self = this
   this.blocks.getBlock(~~(self.start/self.blocks.block), function (err, buffer) {
     self._buffer = buffer
+    //reversing cursor starts at length, which won't be a thing.
     self.resume()
   })
 }
 
 Stream.prototype._next = function () {
   if(!this._buffer || this.start === -1 || this.isAtEnd()) return
+  var block = this.blocks.block
   var next_block
   if(!this.reverse) {
-    var result = frame.getRecord(this.blocks.block, this._buffer, this.cursor)
+    var result = frame.getRecord(block, this._buffer, this.cursor)
     if(result) {
       this.cursor += result.length + 4
       return result
     } else {
       //move to start of next block
-      this.cursor = (this.cursor - this.cursor%this.blocks.block)+this.blocks.block
+      this.cursor = (this.cursor - this.cursor%block)+block
       if(this.cursor < this.blocks.length) {
         //sometimes this is sync, which means we can actually return instead of cb
         //if we always cb, we can get two resume loops going, which is weird.
-        next_block = ~~(this.cursor/this.blocks.block)
+        next_block = ~~(this.cursor/block)
       }
       else
         return
     }
   }
   else {
-    if(this.cursor == 0) {
-      this.cursor --
-      return
-    }
-    else if(this.cursor % this.blocks.block) {
-      var result = frame.getPreviousRecord(this.blocks.block, this._buffer, this.cursor%this.blocks.block)
-      this.cursor -= (result.length+4)
+    if(this.cursor % block) {
+      //get the previous record, unless this is the first item
+      //in a lte stream.
+      if(!(this.count === 0 && this.max_inclusive === this.cursor)) {
+        this.cursor = frame.getPreviousRecord(block, this._buffer, this.cursor)
+      }
+      var result = frame.getRecord(block, this._buffer, this.cursor)
       return result
     }
     else {
-      next_block = ~~(this.cursor/this.blocks.block)-1
+      var current_block = ~~(this.cursor/block)
+      next_block = ~~(this.cursor/block)-1
+      if(current_block === next_block)
+        throw new Error('failed to decrement block')
     }
   }
   var self = this, async = false, returned = false
-  this.blocks.getBlock(next_block, function (err, buffer) {
-    self._buffer = buffer
-    returned = true
-    if(self.reverse)
-        self.cursor = self.blocks.block*next_block + buffer.readUInt32LE(self.blocks.block-4)
-    if(async) self.resume()
-  })
+  if(next_block >= 0)
+    this.blocks.getBlock(next_block, function (err, buffer) {
+      self._buffer = buffer
+      returned = true
+      if(self.reverse) {
+        //point to the end of the blocks, in the newly retrived block
+        self.cursor = next_block*block + buffer.readUInt32LE(block - 4)
+      }
+      if(async) self.resume()
+    })
   async = true
   if(returned) return self._next()
 }
 
 Stream.prototype.isAtEnd = function () {
-  return this.reverse ? this.cursor < 0 : this.cursor >= this.blocks.length
+  return this.reverse ? this.cursor <= 0 : this.cursor >= this.blocks.length
 }
 
 
@@ -109,15 +123,18 @@ Stream.prototype.resume = function () {
   while(this.sink && !this.sink.paused && !this.ended) {
     var result = this._next()
     if(result && result.length) {
+      var o = result.offset
       if(
         (++ this.count) > this.skip &&
-        (this.min === null || this.min < result.offset || this.min_inclusive === result.offset) &&
-        (this.max === null || this.max > result.offset || this.max_inclusive === result.offset)
-      )
+        (this.min === null || this.min < o || this.min_inclusive === o) &&
+        (this.max === null || this.max > o || this.max_inclusive === o)
+      ) {
         this._format(result)
-      else
-        if(false && this.limit > 0 && this.count >= this.limit + this.skip) {
+      }
+      else {
+        if(this.limit > 0 && this.count >= this.limit + this.skip) {
           this.abort(); this.sink.end()
+        }
       }
     }
     else if(!this.live && (result ? result.length == 0 : this.isAtEnd())) {
@@ -140,4 +157,6 @@ Stream.prototype.abort = function () {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
+
+
 
