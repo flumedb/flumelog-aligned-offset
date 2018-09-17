@@ -13,7 +13,7 @@ var raf = RAF(filename, {block: 64*1024})
 var a = []
 
 tape('insert random data', function (t) {
-  for(var i = 0; i < 200; i++) {
+  for(var i = 0; i < 2000; i++) {
     var b = random()
     a.push(b)
     raf.append(b, function () {})
@@ -103,7 +103,6 @@ tape('stream, reverse', function (t) {
       t.equal(ary[ary.length-1].seq, a[0].seq)
       t.equal(ary[0].seq, a[a.length-1].seq)
       t.equal(ary.length, a.length)
-      //t.deepEqual(ary.reverse(), a)
       t.equal(_ary.length, a.length)
       t.end()
     }))
@@ -122,18 +121,20 @@ tape('seqs, reverse, lte, lt', function (t) {
       t.equal(_ary.length, i+1)
       t.equal(_ary[0].seq, ary[0].seq)
       t.deepEqual(_ary, ary.slice(0, i+1))
-      return t.end()
       raf.stream({lt: ary[i].seq, reverse: true}).pipe(collect(function (err, _ary) {
         t.equal(_ary.length, i)
-        console.log(_ary[i-1].seq, ary[i].seq)
         t.ok(_ary[_ary.length-1].seq < ary[i].seq)
-        t.equal(_ary[0].seq, 0)
-        t.equal(_ary[0].seq, ary[0].seq)
-        t.ok(_ary[i-1].seq < ary[i].seq)
-        t.equal(_ary[0].seq, ary[0].seq)
+        t.equal(_ary[_ary.length-1].seq, 0)
+        t.equal(_ary[0].seq, ary[i-1].seq)
         t.end()
       }))
     }))
   }))
 })
+
+
+
+
+
+
 
