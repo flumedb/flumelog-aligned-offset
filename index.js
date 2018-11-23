@@ -3,11 +3,16 @@ var Cache = require('lru_cache').LRUCache
 var Stream = require('./stream')
 var Append = require('./append')
 
+var DO_CACHE = true
+
+function id(e) { return e }
+var _codec = {encode: id, decode: id, buffer: true}
 module.exports = function (file, opts) {
   var cache = new Cache(1024)
   var raf = RAF(file)
   var block = opts && opts.block || 65536
   var length = null, waiting = [], waitingDrain = [], self, state
+  var codec = opts && opts.codec || _codec
 
   raf.stat(function (err, stat) {
     var len = stat ? stat.size : 0
@@ -37,7 +42,6 @@ module.exports = function (file, opts) {
 
   // the cache slows things down a surprising amount!
   // an entire scan in 1.76 seconds, vs > 2.5 seconds.
-  var DO_CACHE = false
   var last_index = -1, last_buffer
   var blocks = cache; //new WeakMap()
 
@@ -54,10 +58,25 @@ module.exports = function (file, opts) {
       return cb(null, state.buffers[0])
 
     raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
+      if(err) return setTimeout(function () {
+        getBlock(i, cb)
+      }, 200)
       if(DO_CACHE) blocks.set(i, buffer)
       last_index = i; last_buffer = buffer;
       cb(err, buffer)
     })
+  }
+
+  function callback(cb, buffer, start, length, offset) {
+    cb(null,
+      //I did consider just returning the whole buffer + start + length,
+      //then let the reader treat that as pointers, but it didn't
+      //actually measure to be faster.
+      codec.decode(buffer.slice(start, start+length)),
+      start,
+      length,
+      offset
+    )
   }
 
   function get (offset, cb) {
@@ -69,20 +88,24 @@ module.exports = function (file, opts) {
       if(err) return cb(err)
       var length = buffer.readUInt16LE(block_start)
       //if this is last item in block, jump to start of next block.
-      if(length === block-1)
+      if(length === block-1) //wouldn't zero be better?
         get(file_start+block, cb)
       else
-        cb(null, buffer, block_start+2, length, offset)
+        callback(cb, buffer, block_start+2, length, offset)
     })
   }
 
   var write_timer
+  var w = 0
   function next_write () {
     state = Append.writable(state)
     var buffer = Append.getWritable(state)
-    raf.write(state.written, buffer, function (err) {
+    raf.write(state.written, buffer, function (err, v) {
+      if(err) throw err
+      var w = state.written
       state = Append.written(state)
-      schedule_next_write()
+
+      return schedule_next_write()
     })
   }
 
@@ -107,17 +130,32 @@ module.exports = function (file, opts) {
     }
   }
 
-  function append(data, cb) {
+  function _append(data) {
+    data = codec.encode(data)
+    if('string' == typeof data)
+      data = Buffer.from(data)
     state = Append.append(state, data)
+
+  }
+
+  function append(data, cb) {
+    if(Array.isArray(data)) {
+      for(var i = 0; i < data.length; i++)
+        _append(data[i])
+    } else
+      _append(data)
+
     self.length = length = state.offset
     schedule_next_write()
-    cb()
+    self.onWrite(state.offset)
+    cb(null, state.offset)
   }
 
   return self = {
     block: block,
     length: null,
     appendState: state,
+    codec: codec,
     getBlock: onLoad(getBlock),
     get: onLoad(get),
 
@@ -129,13 +167,13 @@ module.exports = function (file, opts) {
         getBlock(~~(offset/block)-1, function (err, buffer) {
           block_start = buffer.readUInt32LE(block-4)
           var length = buffer.readUInt16LE(block_start-2)
-          cb(null, buffer, block_start-2-length, length)
+          callback(cb, buffer, block_start-2-length, length, offset)
         })
       }
       else {
         getBlock(~~(offset/block), function (err, buffer) {
           var length = buffer.readUInt16LE(block_start-2)
-          cb(null, buffer, block_start-2-length, length)
+          callback(cb, buffer, block_start-2-length, length, offset)
         })
       }
     }),
@@ -172,12 +210,12 @@ module.exports = function (file, opts) {
 
     streams: [],
 
+    onWrite: function () {},
+
     onDrain: onLoad(function (fn) {
       if(!Append.hasWrite(state)) fn()
       else waitingDrain.push(fn)
     })
   }
 }
-
-
 
