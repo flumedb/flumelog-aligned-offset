@@ -16,9 +16,10 @@ or not.
     <record.data>
     <record.length: UInt16LE>
   </record>*
-  <padding
+  <footer
+    <end sentinel 0xffff>
     <filler: zeros...>
-    <pointer.start_of_padding: UInt32LE>
+    <pointer.footer: UInt32LE>
   >//end of block.
 >
 ```
