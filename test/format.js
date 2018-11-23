@@ -48,8 +48,11 @@ var raf = FlumeLogRaf(filename, {block: 1024})
 offsets.forEach(function (offset, i) {
   tape('item:'+i, function (t) {
     raf.get(offset, function (err, buffer, start, length) {
-      var b = buffer.slice(start, start+length)
-      t.deepEqual(b, array[i])
+      var b = buffer//.slice(start, start+length)
+      t.equal(length, array[i].length)
+      console.log('L', buffer.length, start, start+length, length)
+      t.equal(length, b.length)
+      t.deepEqual(b.toString('hex'), array[i].toString('hex'))
       t.end()
     })
   })
@@ -58,9 +61,9 @@ offsets.forEach(function (offset, i) {
     tape('next:'+i, function (t) {
       console.log('NEXT_OFFSET', offset)
       raf.getNext(offset, function (err, buffer, start, length) {
-        var b = buffer.slice(start, start+length)
+        var b = buffer//.slice(start, start+length)
         raf.get(offsets[i+1], function (err, buffer, start, length) {
-          var b2 = buffer.slice(start, start+length)
+          var b2 = buffer//.slice(start, start+length)
           t.deepEqual(b, b2)
           t.end()
         })
@@ -69,10 +72,12 @@ offsets.forEach(function (offset, i) {
   */
   if(i)
     tape('previous:'+i, function (t) {
-      raf.getPrevious(offset, function (err, buffer, start, length) {
-        var b = buffer.slice(start, start+length)
+      console.log("GET_PREV", i, offsets[i])
+      raf.getPrevious(offsets[i], function (err, buffer, start, length) {
+        var b = buffer//.slice(start, start+length)
+        console.log("GET", i, offsets[i-1])
         raf.get(offsets[i-1], function (err, buffer, start, length) {
-          var b2 = buffer.slice(start, start+length)
+          var b2 = buffer//.slice(start, start+length)
           t.deepEqual(b, b2)
           t.end()
         })
@@ -94,4 +99,5 @@ tape('stream', function (t) {
     }
   })
 })
+
 

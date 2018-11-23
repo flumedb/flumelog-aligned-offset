@@ -13,7 +13,7 @@ var raf = RAF(filename, {block: 64*1024})
 var a = []
 
 tape('insert random data', function (t) {
-  for(var i = 0; i < 2000; i++) {
+  for(var i = 0; i < 2550; i++) {
     var b = random()
     a.push(b)
     raf.append(b, function () {})
@@ -30,6 +30,10 @@ function collect(cb) {
     }
   }
 }
+
+tape('timeout', function (t) {
+  setTimeout(t.end, 10000)
+})
 
 tape('stream', function (t) {
   raf.stream({seqs: false}).pipe(collect(function (err, ary) {
