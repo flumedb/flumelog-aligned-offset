@@ -84,6 +84,7 @@ Stream.prototype._next = function () {
   var self = this, async = false, returned = false
   if(next_block >= 0)
     this.blocks.getBlock(next_block, function (err, buffer) {
+      //if(err) return self.abort(err)
       self._buffer = buffer
       returned = true
       if(self.reverse) {
@@ -103,7 +104,7 @@ Stream.prototype.isAtEnd = function () {
 
 Stream.prototype._format = function (result) {
   if(this.values) {
-    var value = this._buffer.slice(result.start, result.start + result.length)
+    var value = this.blocks.codec.decode(this._buffer.slice(result.start, result.start + result.length))
     if(this.seqs) this.sink.write({seq: result.offset, value: value})
     else this.sink.write(value)
   }
@@ -133,7 +134,6 @@ Stream.prototype.resume = function () {
     else if(!this.live && (result ? result.length == 0 : this.isAtEnd())) {
       if(this.ended) throw new Error('already ended')
       this.abort()
-      this.sink.end()
       return
     }
     else
@@ -142,11 +142,13 @@ Stream.prototype.resume = function () {
   }
 }
 
-Stream.prototype.abort = function () {
+Stream.prototype.abort = function (err) {
   //only thing to do is unsubscribe from live stream.
   //but append isn't implemented yet...
-  this.ended = true
+  this.ended = err || true
   this.blocks.streams.splice(this.blocks.streams.indexOf(this), 1)
+  if(!this.sink.ended)
+    this.sink.end(err === true ? null : err)
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
