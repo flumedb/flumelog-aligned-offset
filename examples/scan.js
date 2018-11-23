@@ -1,8 +1,12 @@
 var FlumeLogRaf = require('../')
 var Looper = require('looper')
 var raf = FlumeLogRaf(process.argv[2], {block: 64*1024})
-var binary = require('binary')
-var BinaryProxy = require('binary/proxy')
+var binary = require('bipf')
+
+//scan through a bipf log, looking for particular values.
+//it's a brute force search! but it's really fast because
+//no parsing. not really much different than just dumping the file!!!
+
 var _type = new Buffer('type')
 var _channel = new Buffer('channel')
 var _content = new Buffer('content')
@@ -25,24 +29,25 @@ function end () {
 
 var types = {}
 var start = Date.now()
-raf.stream().pipe({
+raf.stream({seqs: false}).pipe({
   paused: false,
   write: function (buffer) {
       count ++
-      p = start = 0
+      var start = p = 0
       p = binary.seekKey(buffer, p, _value)
-      p = binary.seekKey(buffer, p, _content)
-      var p_type = binary.seekKey(buffer, p, _type)
-//      console.log(p, p_type)
-      if(~p_type &&  binary.compareString(buffer, p_type, _post) === 0) {
-//type = binary.decode(buffer, p_type)) == 'post') {
-//        var p_root = binary.seekKey(buffer, p, _root)
-  //      if(~p_root && binary.compareString(buffer, p_root, _rootValue) === 0) {
-            found ++
-          console.log(binary.decode(buffer, start))
-          if(found > 100)
-            this.source.abort()
-    //    }
+      if(~p) {
+        p = binary.seekKey(buffer, p, _content)
+  //      var p_type = binary.seekKey(buffer, p, _type)
+    //    if(~p_type &&  binary.compareString(buffer, p_type, _post) === 0) {
+          //type = binary.decode(buffer, p_type)) == 'post') {
+          var p_root = binary.seekKey(buffer, p, _root)
+          if(~p_root && binary.compareString(buffer, p_root, _rootValue) === 0) {
+              found ++
+            console.log(binary.decode(buffer, start))
+  //          if(found > 100)
+    //          this.source.abort()
+          }
+      //  }
       }
   },
   end: function () {
@@ -88,5 +93,9 @@ var next = Looper(function () {
   })
 })
 next()
+
+
+
+
 
 

@@ -1,20 +1,45 @@
 var pull = require('pull-stream')
 var FlumeLog = require('flumelog-offset')
+var FlumeLogRaf = require('../')
 var fs = require('fs')
 var frame = require('../frame')
-var binary = require('binary')
+var binary = require('bipf')
 var json = require('flumecodec/json')
 var logfile = process.argv[3]
 var fd = fs.openSync(logfile, 'a')
 var block = 64*1024
 function id (e) { return e }
 
-var log = FlumeLog(process.argv[2], {blockSize: block, codec: json})
+//copy an old (flumelog-offset) log (json) to a new raf log (bipf)
 
+if(process.argv[2] === process.argv[3]) throw new Error('input must !== output')
+
+var log = FlumeLog(process.argv[2], {blockSize: block, codec: json})
+var log2 = FlumeLogRaf (process.argv[3], {block: block})
 var a = [], length = 0
 pull(
   log.stream({seqs:false, codec: json}),
+  pull.map(function (data) {
+    var len = binary.encodingLength(data)
+    var b = Buffer.alloc(len)
+    length += b.length + 4
+    binary.encode(data, b, 0)
+    return b
+  }),
+  function (read) {
+    read(null, function next (err, data) {
+      if(!data) return
+      log2.append(data, function () {})
+      if(log2.appendState.offset > log2.appendState.written + block*10)
+        log2.onDrain(function () {
+          read(null, next)
+        })
+      else
+        read(null, next)
+    })
+  }
 
+/*
   function (read) {
     read(null, function next (err, data) {
       if(data) {
@@ -38,13 +63,6 @@ pull(
         read(null, next)
     })
   }
+*/
 )
-//*/
-
-
-
-
-
-
-
 
