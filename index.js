@@ -152,6 +152,7 @@ module.exports = function (file, opts) {
   }
 
   return self = {
+    filename: file,
     block: block,
     length: null,
     appendState: state,
