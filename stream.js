@@ -35,6 +35,8 @@ Stream.prototype._ready = function () {
   else
     this.cursor = ltgt.lowerBound(this.opts, 0)
 
+  if(this.cursor < 0) this.cursor = 0
+
   var self = this
   this.blocks.getBlock(~~(this.cursor/self.blocks.block), function (err, buffer) {
     self._buffer = buffer
@@ -152,4 +154,9 @@ Stream.prototype.abort = function (err) {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
+
+
+
+
+
 
