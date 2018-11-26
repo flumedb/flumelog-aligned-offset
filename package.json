@@ -1,11 +1,11 @@
 {
-  "name": "flumelog-random-access-storage",
+  "name": "flumelog-aligned-offset",
   "description": "",
   "version": "1.0.0",
-  "homepage": "https://github.com/dominictarr/flumelog-random-access-storage",
+  "homepage": "https://github.com/dominictarr/flumelog-aligned-offset",
   "repository": {
     "type": "git",
-    "url": "git://github.com/dominictarr/flumelog-random-access-storage.git"
+    "url": "git://github.com/dominictarr/flumelog-aligned-offset.git"
   },
   "dependencies": {
     "lru_cache": "^1.0.2",

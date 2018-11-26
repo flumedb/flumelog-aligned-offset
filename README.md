@@ -1,15 +1,15 @@
-# flumelog-random-access-storage
+# flumelog-aligned-offset
 
 a new flumelog format.
 like [flumelog-offset](https://github.com/flumedb/flumelog-offset),
 each record is identified by an integer byte offset, and also,
 each record is delimited by it's length.
 But unlike `flumelog-offset` records within blocks are always
-byte aligned to the start of the block, so there is no overlap,
+aligned to the start of the block, so there is no overlap,
 and this makes it easy to know wether you have the block for a record
 or not.
 
-``` 
+```
 <block
   <record
     <record.length: UInt16LE>
