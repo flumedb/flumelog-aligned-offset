@@ -7,7 +7,7 @@ var toCompat = require('../compat')
 require('bench-flumelog')(function () {
   var log = FlumeLog('/tmp/bench-flumelog-raf_' + Date.now(), {
     block: 1024*64,
-    codec: codec.json
+//    codec: codec.json
   })
 
   return toCompat(log)

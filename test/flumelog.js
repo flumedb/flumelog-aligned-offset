@@ -4,8 +4,8 @@ var create = require('../')
 var testLog = require('test-flumelog')
 var toCompat = require('../compat')
 //function test(name, opts, cb) {
-  testLog(function () {
-    var raf = create('/tmp/test_flumelog-offset_'+Date.now(), {
+  testLog(function (filename) {
+    var raf = create(filename, {
       blockSize: 1024*64,
       codec: require('flumecodec/json')
     })
