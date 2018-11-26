@@ -3,10 +3,6 @@ var Obv = require('obv')
 module.exports = function toCompat(log) {
   log.since = Obv()
   log.onWrite = log.since.set
-  log.onReady(function () {
-    console.log(log.length)
-    log.since.set(log.length-1)
-  })
 
   var _stream = log.stream
   log.stream = function (opts) {
