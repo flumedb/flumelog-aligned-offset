@@ -29,7 +29,7 @@
     "test-flumeview-index": "^2.2.3"
   },
   "browser": {
-    "index.js": "browser.js"
+    "./index.js": "./browser.js"
   },
   "scripts": {
     "test": "set -e; for t in test/*.js; do node $t; done"
