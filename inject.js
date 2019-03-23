@@ -26,6 +26,7 @@ module.exports = function (RAF, Cache) {
       if(len%block == 0) {
         self.appendState = state = Append.initialize(block, length, Buffer.alloc(block))
         while(waiting.length) waiting.shift()()
+        self.onWrite(self.length)
       } else {
         var start = len - len%block
         raf.read(len - len%block, Math.min(block, len%block), function (err, _buffer) {
@@ -242,6 +243,4 @@ module.exports = function (RAF, Cache) {
     }
   }
 }
-
-
 
