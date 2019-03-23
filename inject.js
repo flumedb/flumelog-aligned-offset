@@ -21,12 +21,12 @@ module.exports = function (RAF, Cache) {
     }
 
     raf.stat(function (_, stat) {
-      var len = stat ? stat.size : 0
-      self.length = length = len
-      if(len%block == 0) {
+      var len = stat ? stat.size : -1
+      self.length = length = len == -1 ? 0 : len
+      if(len == -1 || length%block == 0) {
         self.appendState = state = Append.initialize(block, length, Buffer.alloc(block))
         while(waiting.length) waiting.shift()()
-        self.onWrite(self.length)
+        self.onWrite(len)
       } else {
         var start = len - len%block
         raf.read(len - len%block, Math.min(block, len%block), function (err, _buffer) {
@@ -44,10 +44,10 @@ module.exports = function (RAF, Cache) {
     })
 
     function onLoad (fn) {
-      return function (offset, cb) {
+      return function (arg, cb) {
         if(closed) return cb(new Error('closed'))
-        if(length === null) waiting.push(function () { fn(offset, cb) })
-        else return fn(offset, cb)
+        if(length === null) waiting.push(function () { fn(arg, cb) })
+        else return fn(arg, cb)
       }
     }
 
@@ -132,6 +132,17 @@ module.exports = function (RAF, Cache) {
         if(err) throw err
         var w = state.written
         state = Append.written(state)
+
+        //TODO: some views could be eager, updating before the log is fully persisted
+        //      just don't write the view data until the log is confirmed.
+
+        //i moved waitingDrain here, but realized that emitting the streams needed to be before that.
+        if(self.streams.length) {
+          for(var i = 0; i < self.streams.length; i++)
+            if(!self.streams[i].ended)
+              self.streams[i].resume()
+        }
+
         //waitingDrain moved from schedule_next_write
         while(waitingDrain.length)
           waitingDrain.shift()()
@@ -149,13 +160,6 @@ module.exports = function (RAF, Cache) {
         clearTimeout(write_timer)
         write_timer = setTimeout(next_write, 20)
       } else {
-        //TODO: some views could be eager, updating before the log is fully persisted
-        //      just don't write the view data until the log is confirmed.
-        if(self.streams.length) {
-          for(var i = 0; i < self.streams.length; i++)
-            if(!self.streams[i].ended)
-              self.streams[i].resume()
-        }
         //waiting was draining when it was ready to queue more
         //appends, but thought it would be better if it was
         //happened after it definitely is written.
@@ -177,7 +181,8 @@ module.exports = function (RAF, Cache) {
 
     function append(data, sync, cb) {
       if('function' === typeof sync)
-        cb = sync, sync = false
+        cb = sync, sync = true
+
 
       if(Array.isArray(data)) {
         for(var i = 0; i < data.length; i++)
@@ -217,8 +222,8 @@ module.exports = function (RAF, Cache) {
 
       stream: function (opts) {
         var stream = new Stream(this, opts)
-        if(opts && opts.live)
-          this.streams.push(stream)
+//        if(opts && opts.live)
+        this.streams.push(stream)
         return stream
       },
 
@@ -232,15 +237,26 @@ module.exports = function (RAF, Cache) {
       }),
 
       close: function (cb) {
-        self.onDrain(function () {
-          console.log('drained', state)
-          closed = true
-          raf.close(function () {
-            cb()
+        self.onReady(function () {
+          self.onDrain(function () {
+            while(self.streams.length)
+              self.streams.shift().end(new Error('flumelog-aligned-offset: closed'))
+            closed = true
+            raf.close(function () {
+              cb()
+            })
           })
         })
       }
     }
   }
 }
+
+
+
+
+
+
+
+
 
