@@ -148,15 +148,12 @@ Stream.prototype.abort = function (err) {
   //only thing to do is unsubscribe from live stream.
   //but append isn't implemented yet...
   this.ended = err || true
-  this.blocks.streams.splice(this.blocks.streams.indexOf(this), 1)
+  var i = this.blocks.streams.indexOf(this)
+  if(~i) this.blocks.streams.splice(i, 1)
   if(!this.sink.ended)
     this.sink.end(err === true ? null : err)
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
-
-
-
-
 
 
