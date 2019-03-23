@@ -18,12 +18,15 @@
   "devDependencies": {
     "bench-flumelog": "^1.2.0",
     "flumecodec": "0.0.1",
+    "flumedb": "^1.0.6",
     "flumelog-offset": "^3.3.1",
+    "flumeview-level": "^3.0.8",
     "hexpp": "^2.0.0",
     "looper": "^4.0.0",
-    "tape": "^4.9.1",
     "pull-stream": "^3.6.9",
-    "test-flumelog": "^1.0.0"
+    "tape": "^4.9.1",
+    "test-flumelog": "^1.0.0",
+    "test-flumeview-index": "^2.2.3"
   },
   "browser": {
     "index.js": "browser.js"
