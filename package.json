@@ -1,7 +1,7 @@
 {
   "name": "flumelog-aligned-offset",
   "description": "",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homepage": "https://github.com/dominictarr/flumelog-aligned-offset",
   "repository": {
     "type": "git",
@@ -34,8 +34,3 @@
   "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://dominictarr.com)",
   "license": "MIT"
 }
-
-
-
-
-
