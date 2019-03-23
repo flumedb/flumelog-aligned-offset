@@ -11,7 +11,9 @@
     "lru_cache": "^1.0.2",
     "push-stream": "^10.0.3",
     "random-access-file": "^2.0.1",
-    "random-access-web": "^2.0.1"
+    "random-access-web": "^2.0.1",
+    "obv": "0.0.1",
+    "push-stream-to-pull-stream": "^1.0.3"
   },
   "devDependencies": {
     "bench-flumelog": "^1.2.0",
@@ -19,11 +21,8 @@
     "flumelog-offset": "^3.3.1",
     "hexpp": "^2.0.0",
     "looper": "^4.0.0",
-    "obv": "0.0.1",
-    "pull-looper": "^1.0.0",
-    "pull-stream": "^3.6.9",
-    "push-stream-to-pull-stream": "^1.0.3",
     "tape": "^4.9.1",
+    "pull-stream": "^3.6.9",
     "test-flumelog": "^1.0.0"
   },
   "browser": {
@@ -35,3 +34,8 @@
   "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://dominictarr.com)",
   "license": "MIT"
 }
+
+
+
+
+
