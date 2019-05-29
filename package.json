@@ -9,18 +9,19 @@
   },
   "dependencies": {
     "lru_cache": "^1.0.2",
-    "push-stream": "^10.0.3",
-    "random-access-file": "^2.0.1",
-    "random-access-web": "^2.0.1",
     "obv": "0.0.1",
-    "push-stream-to-pull-stream": "^1.0.3"
+    "push-stream": "^10.0.3",
+    "push-stream-to-pull-stream": "^1.0.3",
+    "random-access-file": "^2.0.1",
+    "random-access-web": "^2.0.1"
   },
   "devDependencies": {
-    "bench-flumelog": "^1.2.0",
+    "bench-flumelog": "^2.0.0",
+    "bipf": "^1.2.3",
     "flumecodec": "0.0.1",
     "flumedb": "^1.0.6",
     "flumelog-offset": "^3.3.1",
-    "flumeview-level": "^3.0.8",
+    "flumeview-level": "^3.0.13",
     "hexpp": "^2.0.0",
     "looper": "^4.0.0",
     "pull-stream": "^3.6.9",
