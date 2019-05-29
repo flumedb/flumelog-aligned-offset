@@ -2,7 +2,6 @@ module.exports = function (RAF, Cache) {
   var Stream = require('./stream')
   var Append = require('./append')
   var frame = require('./frame')
-
   var DO_CACHE = true
 
   function id(e) { return e }
@@ -61,6 +60,7 @@ module.exports = function (RAF, Cache) {
         return cb(null, last_buffer)
       if(DO_CACHE && blocks.get(i))
         return cb(null, blocks.get(i))
+
 
       var file_start = i*block
       //insert cache here...
@@ -123,6 +123,7 @@ module.exports = function (RAF, Cache) {
       })
     }
 
+    //TODO move this write handling stuff into another file
     var write_timer
     var w = 0
     function next_write () {
@@ -222,7 +223,6 @@ module.exports = function (RAF, Cache) {
 
       stream: function (opts) {
         var stream = new Stream(this, opts)
-//        if(opts && opts.live)
         this.streams.push(stream)
         return stream
       },
@@ -240,7 +240,7 @@ module.exports = function (RAF, Cache) {
         self.onReady(function () {
           self.onDrain(function () {
             while(self.streams.length)
-              self.streams.shift().end(new Error('flumelog-aligned-offset: closed'))
+              self.streams.shift().abort(new Error('flumelog-aligned-offset: closed'))
             closed = true
             raf.close(function () {
               cb()
@@ -251,12 +251,5 @@ module.exports = function (RAF, Cache) {
     }
   }
 }
-
-
-
-
-
-
-
 
 
