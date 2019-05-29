@@ -5,8 +5,7 @@ var fs = require('fs')
 var frame = require('../frame')
 var binary = require('bipf')
 var json = require('flumecodec/json')
-var logfile = process.argv[3]
-var fd = fs.openSync(logfile, 'a')
+
 var block = 64*1024
 function id (e) { return e }
 
@@ -15,6 +14,7 @@ function id (e) { return e }
 if(process.argv[2] === process.argv[3]) throw new Error('input must !== output')
 
 var log = FlumeLog(process.argv[2], {blockSize: block, codec: json})
+
 var log2 = FlumeLogRaf (process.argv[3], {block: block})
 var a = [], length = 0
 pull(
@@ -28,7 +28,8 @@ pull(
   }),
   function (read) {
     read(null, function next (err, data) {
-      if(!data) return
+      if(err && err !== true) throw err
+      if(err) return console.error('done')
       log2.append(data, function () {})
       if(log2.appendState.offset > log2.appendState.written + block*10)
         log2.onDrain(function () {
@@ -65,4 +66,15 @@ pull(
   }
 */
 )
+
+
+
+
+
+
+
+
+
+
+
 
