@@ -41,7 +41,7 @@ module.exports = {
     else {
       var _length = buffer.readUInt16LE(start+2+length)
       if(_length != length)
-        throw new Error('expected matching length at end, expected:'+length+', was:'+_length)
+        throw new Error('expected matching length at end, expected:'+length+', was:'+_length+' on block:'+block+' at offset:'+offset)
       result.offset = offset
       result.start = start+2
       result.length = length
