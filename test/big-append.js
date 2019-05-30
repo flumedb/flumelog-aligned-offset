@@ -36,7 +36,9 @@ raf.stream({live: true}).pipe({
     console.log("DATA", data.seq)
     ary.push(data)
   },
-  end: function () {}
+  end: function () {
+    throw new Error('live stream should not end')
+  }
 })
 
 var a = []
