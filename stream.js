@@ -12,7 +12,6 @@ function Stream (blocks, opts) {
   this.values = opts.values !== false
   this.limit = opts.limit || 0
   this.count = 0
-
   this.min = this.max = this.min_inclusive = this.max_inclusive = null
 
   var self = this
@@ -37,6 +36,11 @@ Stream.prototype._ready = function () {
 
   if(this.cursor < 0) this.cursor = 0
 
+  if(!this.live && this.cursor === 0 && this.blocks.length == 0) {
+    this.ended = true
+    return this.resume()
+  }
+
   var self = this
   this.blocks.getBlock(~~(this.cursor/self.blocks.block), function (err, buffer) {
     self._buffer = buffer
@@ -46,7 +50,10 @@ Stream.prototype._ready = function () {
 }
 
 Stream.prototype._next = function () {
-  if(!this._buffer || this.cursor === -1 || this.isAtEnd()) return
+  if(!this._buffer || this.cursor === -1 || this.isAtEnd()) {
+    this._at_end = true
+    return
+  }
   var block = this.blocks.block
   var next_block
   if(!this.reverse) {
@@ -56,7 +63,7 @@ Stream.prototype._next = function () {
       return result
     } else {
       //move to start of next block
-      this.cursor = (this.cursor - this.cursor%block)+block
+      this.cursor = (this.cursor - (this.cursor%block))+block
       if(this.cursor < this.blocks.length) {
         //sometimes this is sync, which means we can actually return instead of cb
         //if we always cb, we can get two resume loops going, which is weird.
@@ -84,8 +91,9 @@ Stream.prototype._next = function () {
     }
   }
   var self = this, async = false, returned = false
-  if(next_block >= 0)
+  if(next_block >= 0) {
     this.blocks.getBlock(next_block, function (err, buffer) {
+      if(err) console.error(err)
       //if(err) return self.abort(err)
       self._buffer = buffer
       returned = true
@@ -96,6 +104,7 @@ Stream.prototype._next = function () {
       if(async) self.resume()
     })
   async = true
+  }
   if(returned) return self._next()
 }
 
@@ -115,8 +124,13 @@ Stream.prototype._format = function (result) {
 }
 
 Stream.prototype.resume = function () {
-  if(this.ended) return
-  while(this.sink && !this.sink.paused && !this.ended) {
+  if(!this.sink || this.sink.paused) return
+  this._at_end = false
+
+  if(this.ended && !this.sink.ended) {
+    return this.sink.end(this.ended === true ? null : this.ended)
+  }
+  while(this.sink && !this.sink.paused/* && !this.ended*/) {
     var result = this._next()
     if(result && result.length) {
       var o = result.offset
@@ -155,5 +169,7 @@ Stream.prototype.abort = function (err) {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
+
+
 
 

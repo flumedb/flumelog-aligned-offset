@@ -10,7 +10,7 @@ module.exports = function (RAF, Cache) {
     var cache = new Cache(1024)
     var raf = RAF(file)
     var closed = false
-    var block = opts && opts.block || 65536
+    var block = opts && opts.block || opts.blockSize || 65536
     var length = null, waiting = [], waitingDrain = [], self, state
     var codec = opts && opts.codec || _codec
     var since = {value: undefined}
@@ -138,10 +138,14 @@ module.exports = function (RAF, Cache) {
         //      just don't write the view data until the log is confirmed.
 
         //i moved waitingDrain here, but realized that emitting the streams needed to be before that.
+        //XXX this is wrong. calls resume on streams that might still be reading older blocks.
+        //this should only call resume on streams that are waiting for the newest block.
         if(self.streams.length) {
-          for(var i = 0; i < self.streams.length; i++)
-            if(!self.streams[i].ended)
-              self.streams[i].resume()
+          for(var i = 0; i < self.streams.length; i++) {
+            var stream = self.streams[i]
+            if(!stream.ended && stream._at_end)
+              stream.resume()
+          }
         }
 
         //waitingDrain moved from schedule_next_write
@@ -197,6 +201,7 @@ module.exports = function (RAF, Cache) {
       self.onWrite(offset)
       if(sync)
         self.onDrain(function () {
+
           cb(null, since.value)
         })
       else
@@ -251,5 +256,4 @@ module.exports = function (RAF, Cache) {
     }
   }
 }
-
 
