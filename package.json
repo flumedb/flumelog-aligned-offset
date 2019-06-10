@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "lru_cache": "^1.0.2",
+    "ltgt": "^2.2.1",
     "obv": "0.0.1",
     "push-stream": "^10.0.3",
     "push-stream-to-pull-stream": "^1.0.3",
