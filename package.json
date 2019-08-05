@@ -13,8 +13,7 @@
     "obv": "0.0.1",
     "push-stream": "^10.0.3",
     "push-stream-to-pull-stream": "^1.0.3",
-    "random-access-file": "^2.0.1",
-    "random-access-web": "^2.0.1"
+    "polyraf": "^1.1.0"
   },
   "devDependencies": {
     "bench-flumelog": "^2.0.0",
@@ -29,9 +28,6 @@
     "tape": "^4.9.1",
     "test-flumelog": "^1.0.0",
     "test-flumeview-index": "^2.2.3"
-  },
-  "browser": {
-    "./index.js": "./browser.js"
   },
   "scripts": {
     "test": "set -e; for t in test/*.js; do node $t; done"
