@@ -103,7 +103,7 @@ Stream.prototype._next = function () {
       }
       if(async) self.resume()
     })
-  async = true
+    async = true
   }
   if(returned) return self._next()
 }
@@ -115,9 +115,13 @@ Stream.prototype.isAtEnd = function () {
 
 Stream.prototype._format = function (result) {
   if(this.values) {
-    var value = this.blocks.codec.decode(this._buffer.slice(result.start, result.start + result.length))
-    if(this.seqs) this.sink.write({seq: result.offset, value: value})
-    else this.sink.write(value)
+    var data = this._buffer.slice(result.start, result.start + result.length)
+    if (!data.every(x => x === 0)) // skip deleted
+    {
+      var value = this.blocks.codec.decode(data)
+      if(this.seqs) this.sink.write({seq: result.offset, value: value})
+      else this.sink.write(value)
+    }
   }
   else
     this.sink.write(result.offset)

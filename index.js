@@ -16,6 +16,7 @@ module.exports = function (file, opts) {
   var length = null, waiting = [], waitingDrain = [], self, state
   var codec = opts && opts.codec || _codec
   var since = {value: undefined}
+
   function onError(err) {
     if(self.onError) self.onError(err)
     else throw err
@@ -81,15 +82,19 @@ module.exports = function (file, opts) {
   }
 
   function callback(cb, buffer, start, length, offset) {
-    cb(null,
-       //I did consider just returning the whole buffer + start + length,
-       //then let the reader treat that as pointers, but it didn't
-       //actually measure to be faster.
-       codec.decode(buffer.slice(start, start+length)),
-       start,
-       length,
-       offset
-      )
+    //I did consider just returning the whole buffer + start + length,
+    //then let the reader treat that as pointers, but it didn't
+    //actually measure to be faster.
+
+    var data = buffer.slice(start, start+length)
+
+    if (data.every(x => x === 0)) {
+      const err = new Error('item has been deleted')
+      err.code = 'flumelog:deleted'
+      return cb(err)
+    }
+    else
+      cb(null, codec.decode(data), start, length, offset)
   }
   function getPrevious (offset, cb) {
     var block_start = offset%block
@@ -109,7 +114,7 @@ module.exports = function (file, opts) {
       })
     }
   }
-  function get (offset, cb) {
+  function getRecord(offset, cb) {
     //read the whole block
     if(offset >= length) return cb()
     var block_start = offset%block
@@ -119,9 +124,15 @@ module.exports = function (file, opts) {
       var length = buffer.readUInt16LE(block_start)
       //if this is last item in block, jump to start of next block.
       if(length === block-1) //wouldn't zero be better?
-        get(file_start+block, cb)
+        getRecord(file_start+block, cb)
       else
-        callback(cb, buffer, block_start+2, length, offset)
+        cb(null, buffer, block_start, length)
+    })
+  }
+  function get (offset, cb) {
+    getRecord(offset, function (err, buffer, block_start, length) {
+      if (err) return cb(err)
+      callback(cb, buffer, block_start+2, length, offset)
     })
   }
 
@@ -190,7 +201,6 @@ module.exports = function (file, opts) {
     if('function' === typeof sync)
       cb = sync, sync = true
 
-
     if(Array.isArray(data)) {
       for(var i = 0; i < data.length; i++)
         _append(data[i])
@@ -203,11 +213,20 @@ module.exports = function (file, opts) {
     self.onWrite(offset)
     if(sync)
       self.onDrain(function () {
-
         cb(null, since.value)
       })
     else
       cb(null, offset)
+  }
+
+  function nullMessage(offset, cb) {
+    getRecord(offset, function (err, buffer, block_start, length) {
+      if (err) return cb(err)
+
+      const nullBytes = Buffer.alloc(length)
+      nullBytes.copy(buffer, block_start+2)
+      cb(null)
+    })
   }
 
   return self = {
@@ -220,6 +239,12 @@ module.exports = function (file, opts) {
     get: onLoad(get),
     since: since,
     getPrevious: onLoad(getPrevious),
+
+    del: function(offset, cb)
+    {
+      if (DO_CACHE) cache.remove(offset)
+      nullMessage(offset, cb)
+    },
 
     onReady: function (fn) {
       if(this.length != null) return fn()

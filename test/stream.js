@@ -1,4 +1,3 @@
-
 var tape = require('tape')
 var fs = require('fs')
 var FlumeLogRaf = require('../')
