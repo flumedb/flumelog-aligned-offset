@@ -225,7 +225,7 @@ module.exports = function (file, opts) {
 
       const nullBytes = Buffer.alloc(length)
       nullBytes.copy(buffer, block_start+2)
-      cb(null)
+      raf.write(~~(offset/block), buffer, cb)
     })
   }
 
