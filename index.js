@@ -64,7 +64,6 @@ module.exports = function (file, opts) {
     if(DO_CACHE && blocks.get(i))
       return cb(null, blocks.get(i))
 
-
     var file_start = i*block
     //insert cache here...
 
@@ -117,22 +116,23 @@ module.exports = function (file, opts) {
   function getRecord(offset, cb) {
     //read the whole block
     if(offset >= length) return cb()
-    var block_start = offset%block
-    var file_start = offset - block_start
+    var record_start = offset%block
+    var block_start = offset - record_start
+    console.log("getting block", ~~(offset/block))
     getBlock(~~(offset/block), function (err, buffer) {
       if(err) return cb(err)
-      var length = buffer.readUInt16LE(block_start)
+      var length = buffer.readUInt16LE(record_start)
       //if this is last item in block, jump to start of next block.
       if(length === block-1) //wouldn't zero be better?
-        getRecord(file_start+block, cb)
+        getRecord(block_start+block, cb)
       else
-        cb(null, buffer, block_start, length)
+        cb(null, buffer, block_start, record_start, length)
     })
   }
   function get (offset, cb) {
-    getRecord(offset, function (err, buffer, block_start, length) {
+    getRecord(offset, function (err, buffer, block_start, record_start, length) {
       if (err) return cb(err)
-      callback(cb, buffer, block_start+2, length, offset)
+      callback(cb, buffer, record_start+2, length, offset)
     })
   }
 
@@ -220,12 +220,13 @@ module.exports = function (file, opts) {
   }
 
   function nullMessage(offset, cb) {
-    getRecord(offset, function (err, buffer, block_start, length) {
+    getRecord(offset, function (err, buffer, block_start, record_start, length) {
       if (err) return cb(err)
 
       const nullBytes = Buffer.alloc(length)
-      nullBytes.copy(buffer, block_start+2)
-      raf.write(~~(offset/block), buffer, cb)
+      nullBytes.copy(buffer, record_start+2)
+      console.log(`writing buffer, block start: ${block_start}, offset: ${offset}, block size: ${block}, length: ${length}`)
+      raf.write(block_start, buffer, cb)
     })
   }
 

@@ -33,10 +33,10 @@ tape('simple', function (t) {
               if(err) throw err
               t.equal(b3.toString(), v3.toString())
 
-              db.del(offset2, function (err) {
+              db.del(offset3, function (err) {
                 t.error(err)
 
-                db.get(offset2, function (err, bdel) {
+                db.get(offset3, function (err, bdel) {
                   t.ok(err)
                   t.equal(err.message, 'item has been deleted')
                   t.end()
@@ -54,6 +54,40 @@ tape('simple reread', function (t) {
   var file = '/tmp/fao-test_del.log'
   var db = Offset(file, {block: 2*1024})
 
+  var offset1 = 0
+  var offset2 = v1.length+2+2
+  var offset3 = v1.length+2+2+v2.length+2+2
+
+  db.get(offset1, function (err, b) {
+    if(err) throw err
+    t.equal(b.toString(), v1.toString())
+
+    db.get(offset2, function (err, b2) {
+      if(err) throw err
+      t.equal(b2.toString(), v2.toString())
+
+      db.get(offset3, function (err) {
+        t.ok(err)
+        t.equal(err.message, 'item has been deleted')
+
+        db.del(offset2, function (err) {
+          t.error(err)
+
+          db.get(offset2, function (err, bdel) {
+            t.ok(err)
+            t.equal(err.message, 'item has been deleted')
+            t.end()
+          })
+        })
+      })
+    })
+  })
+})
+
+tape('simple reread 2', function (t) {
+  var file = '/tmp/fao-test_del.log'
+  var db = Offset(file, {block: 2*1024})
+
   db.get(0, function (err, b) {
     if(err) throw err
     t.equal(b.toString(), v1.toString())
@@ -62,12 +96,7 @@ tape('simple reread', function (t) {
       t.ok(err)
       t.equal(err.message, 'item has been deleted')
 
-      db.get(v1.length+2+2+v2.length+2+2, function (err, b3) {
-        if(err) throw err
-        t.equal(b3.toString(), v3.toString())
-
-        t.end()
-      })
+      t.end()
     })
   })
 })
