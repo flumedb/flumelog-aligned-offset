@@ -118,7 +118,6 @@ module.exports = function (file, opts) {
     if(offset >= length) return cb()
     var record_start = offset%block
     var block_start = offset - record_start
-    console.log("getting block", ~~(offset/block))
     getBlock(~~(offset/block), function (err, buffer) {
       if(err) return cb(err)
       var length = buffer.readUInt16LE(record_start)
@@ -225,7 +224,6 @@ module.exports = function (file, opts) {
 
       const nullBytes = Buffer.alloc(length)
       nullBytes.copy(buffer, record_start+2)
-      console.log(`writing buffer, block start: ${block_start}, offset: ${offset}, block size: ${block}, length: ${length}`)
       raf.write(block_start, buffer, cb)
     })
   }
