@@ -64,7 +64,6 @@ function nextBlock(offset, block) {
   return startBlock(offset, block) + block
 }
 
-
 exports.writable = function (state) {
   if(state.writing > state.written) throw new Error ('already writing')
   //from written to the end of the block, or the offset
@@ -104,5 +103,3 @@ exports.hasWrite = function (state) {
 exports.isWriting = function (state) {
   return state.writing > state.written
 }
-
-

@@ -30,7 +30,6 @@ module.exports = function (file, opts) {
       while(waiting.length) waiting.shift()()
       self.onWrite(len)
     } else {
-      var start = len - len%block
       raf.read(len - len%block, Math.min(block, len%block), function (err, _buffer) {
         if(err) return onError(err)
         //raf always gives us the last block the actual size
