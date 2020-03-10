@@ -94,6 +94,7 @@ module.exports = function (file, opts) {
     else
       cb(null, codec.decode(data), start, length, offset)
   }
+
   function getPrevious (offset, cb) {
     var block_start = offset%block
     var file_start = offset - block_start
@@ -112,6 +113,7 @@ module.exports = function (file, opts) {
       })
     }
   }
+
   function getRecord(offset, cb) {
     //read the whole block
     if(offset >= length) return cb()
@@ -127,6 +129,7 @@ module.exports = function (file, opts) {
         cb(null, buffer, block_start, record_start, length)
     })
   }
+
   function get (offset, cb) {
     getRecord(offset, function (err, buffer, block_start, record_start, length) {
       if (err) return cb(err)
@@ -142,7 +145,6 @@ module.exports = function (file, opts) {
     var buffer = Append.getWritable(state)
     raf.write(state.written, buffer, function (err, v) {
       if(err) throw err
-      var w = state.written
       state = Append.written(state)
 
       //TODO: some views could be eager, updating before the log is fully persisted
