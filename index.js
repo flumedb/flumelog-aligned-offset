@@ -170,8 +170,10 @@ module.exports = function (file, opts) {
       }
 
       //waitingDrain moved from schedule_next_write
-      while(waitingDrain.length)
-        waitingDrain.shift()()
+      for (var i = 0, length = waitingDrain.length; i < length; ++i)
+        waitingDrain[i]()
+
+      waitingDrain = waitingDrain.slice(length)
 
       return schedule_next_write()
     })
