@@ -27,8 +27,16 @@ module.exports = function (file, opts) {
     self.length = length = len == -1 ? 0 : len
     if(len == -1 || length%block == 0) {
       self.appendState = state = Append.initialize(block, length, Buffer.alloc(block))
-      while(waiting.length) waiting.shift()()
-      self.onWrite(len)
+      if (len > 0 && length%block == 0) {
+        raf.read(len - block, block, function (err, _buffer) {
+          var offset = frame.getLastRecord(block, _buffer, block)
+          while(waiting.length) waiting.shift()()
+          self.onWrite(len - block + offset)
+        })
+      } else {
+        while(waiting.length) waiting.shift()()
+        self.onWrite(len)
+      }
     } else {
       raf.read(len - len%block, Math.min(block, len%block), function (err, _buffer) {
         if(err) return onError(err)
