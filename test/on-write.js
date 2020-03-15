@@ -52,6 +52,10 @@ tape('first writes', function (t) {
 
           //if we don't do a close here, the last write will not be written correctly
           //db.close(t.end)
+
+          // simulate a crash so that the block write can't be written
+          db.canWrite = false
+
           t.end()
         }))
       })
@@ -83,8 +87,6 @@ tape('get data after crash write', function (t) {
 
         lastOffset = offset4
 
-        console.log("read after write 4!")
-        
         db2.stream({seqs: false}).pipe(collect(function (err, ary) {
           t.deepEqual(ary, [v1, v2, v4])
           
@@ -96,7 +98,6 @@ tape('get data after crash write', function (t) {
   })
 })
 
-// now all hell is loose as the last block if fucked
 tape('get data after correct write', function (t) {
   let db3 = Offset(file, {
     block: blockSize,

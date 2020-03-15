@@ -141,6 +141,7 @@ module.exports = function (file, opts) {
   var write_timer
   var w = 0
   function next_write () {
+    if (!self.canWrite) return
     state = Append.writable(state)
     var buffer = Append.getWritable(state)
     raf.write(state.written, buffer, function (err, v) {
@@ -264,6 +265,9 @@ module.exports = function (file, opts) {
     streams: [],
 
     onWrite: function () {},
+
+    // for tests
+    canWrite: true,
 
     onDrain: onLoad(function (fn) {
       if(!Append.hasWrite(state)) fn()
