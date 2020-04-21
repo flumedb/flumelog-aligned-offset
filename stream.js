@@ -93,7 +93,7 @@ Stream.prototype._next = function () {
   var self = this, async = false, returned = false
   if(next_block >= 0) {
     this.blocks.getBlock(next_block, function (err, buffer) {
-      if(err) console.error(err)
+      if(err) return console.error(err)
       //if(err) return self.abort(err)
       self._buffer = buffer
       returned = true

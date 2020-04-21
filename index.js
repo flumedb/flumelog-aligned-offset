@@ -65,6 +65,16 @@ module.exports = function (file, opts) {
   var last_index = -1, last_buffer
   var blocks = cache; //new WeakMap()
 
+  function readFromRAF(file_start, i, cb)
+  {
+    raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
+      if(err) return cb(err)
+      if(DO_CACHE) blocks.set(i, buffer)
+      last_index = i; last_buffer = buffer;
+      cb(null, buffer)
+    })
+  }
+
   function getBlock (i,  cb) {
     if(i === last_index)
       return cb(null, last_buffer)
@@ -76,15 +86,12 @@ module.exports = function (file, opts) {
 
     if(file_start == state.start)
       return cb(null, state.buffers[0])
-
-    raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
-      if(err) return setTimeout(function () {
-        getBlock(i, cb)
-      }, 200)
-      if(DO_CACHE) blocks.set(i, buffer)
-      last_index = i; last_buffer = buffer;
-      cb(err, buffer)
-    })
+    else if (file_start >= state.writing && state.isWriting())
+      waitingDrain.push(() => {
+        readFromRAF(file_start, i, cb)
+      })
+    else
+      readFromRAF(file_start, i, cb)
   }
 
   function callback(cb, buffer, start, length, offset) {
