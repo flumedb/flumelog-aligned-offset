@@ -86,7 +86,7 @@ module.exports = function (file, opts) {
 
     if(file_start == state.start)
       return cb(null, state.buffers[0])
-    else if (file_start >= state.writing && Append(state).isWriting())
+    else if (file_start >= state.writing && Append.isWriting(state))
       waitingDrain.push(() => {
         readFromRAF(file_start, i, cb)
       })
