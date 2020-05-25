@@ -24,7 +24,6 @@ module.exports = {
     return offsets
   },
 
-
   getBlockIndex: function (block, offset) {
     return ~~(offset/block)
   },
@@ -61,7 +60,3 @@ module.exports = {
     return offset - length - 4
   }
 }
-
-
-
-

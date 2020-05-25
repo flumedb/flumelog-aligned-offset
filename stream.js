@@ -80,8 +80,7 @@ Stream.prototype._next = function () {
       if(!(this.count === 0 && this.max_inclusive === this.cursor)) {
         this.cursor = frame.getPreviousRecord(block, this._buffer, this.cursor)
       }
-      var result = frame.getRecord(block, this._buffer, this.cursor)
-      return result
+      return frame.getRecord(block, this._buffer, this.cursor)
     }
     else {
       var current_block = ~~(this.cursor/block)
@@ -90,10 +89,11 @@ Stream.prototype._next = function () {
         throw new Error('failed to decrement block')
     }
   }
+
   var self = this, async = false, returned = false
   if(next_block >= 0) {
     this.blocks.getBlock(next_block, function (err, buffer) {
-      if(err) console.error(err)
+      if(err) return console.error(err)
       //if(err) return self.abort(err)
       self._buffer = buffer
       returned = true
@@ -105,13 +105,13 @@ Stream.prototype._next = function () {
     })
     async = true
   }
+
   if(returned) return self._next()
 }
 
 Stream.prototype.isAtEnd = function () {
   return this.reverse ? this.cursor <= 0 : this.cursor >= this.blocks.length
 }
-
 
 Stream.prototype._format = function (result) {
   if(this.values) {
@@ -158,7 +158,6 @@ Stream.prototype.resume = function () {
     }
     else
       return
-
   }
 }
 
@@ -173,7 +172,3 @@ Stream.prototype.abort = function (err) {
 }
 
 Stream.prototype.pipe = require('push-stream/pipe')
-
-
-
-

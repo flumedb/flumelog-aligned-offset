@@ -27,10 +27,17 @@ module.exports = function (file, opts) {
     self.length = length = len == -1 ? 0 : len
     if(len == -1 || length%block == 0) {
       self.appendState = state = Append.initialize(block, length, Buffer.alloc(block))
-      while(waiting.length) waiting.shift()()
-      self.onWrite(len)
+      if (len > 0 && length%block == 0) {
+        raf.read(len - block, block, function (err, _buffer) {
+          var offset = frame.getLastRecord(block, _buffer, block)
+          while(waiting.length) waiting.shift()()
+          self.onWrite(len - block + offset)
+        })
+      } else {
+        while(waiting.length) waiting.shift()()
+        self.onWrite(len)
+      }
     } else {
-      var start = len - len%block
       raf.read(len - len%block, Math.min(block, len%block), function (err, _buffer) {
         if(err) return onError(err)
         //raf always gives us the last block the actual size
@@ -58,6 +65,16 @@ module.exports = function (file, opts) {
   var last_index = -1, last_buffer
   var blocks = cache; //new WeakMap()
 
+  function readFromRAF(file_start, i, cb)
+  {
+    raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
+      if(err) return cb(err)
+      if(DO_CACHE) blocks.set(i, buffer)
+      last_index = i; last_buffer = buffer;
+      cb(null, buffer)
+    })
+  }
+
   function getBlock (i,  cb) {
     if(i === last_index)
       return cb(null, last_buffer)
@@ -69,15 +86,12 @@ module.exports = function (file, opts) {
 
     if(file_start == state.start)
       return cb(null, state.buffers[0])
-
-    raf.read(file_start, Math.min(block, length-file_start), function (err, buffer) {
-      if(err) return setTimeout(function () {
-        getBlock(i, cb)
-      }, 200)
-      if(DO_CACHE) blocks.set(i, buffer)
-      last_index = i; last_buffer = buffer;
-      cb(err, buffer)
-    })
+    else if (file_start >= state.writing && Append.isWriting(state))
+      waitingDrain.push(() => {
+        readFromRAF(file_start, i, cb)
+      })
+    else
+      readFromRAF(file_start, i, cb)
   }
 
   function callback(cb, buffer, start, length, offset) {
@@ -95,6 +109,7 @@ module.exports = function (file, opts) {
     else
       cb(null, codec.decode(data), start, length, offset)
   }
+
   function getPrevious (offset, cb) {
     var block_start = offset%block
     var file_start = offset - block_start
@@ -113,6 +128,7 @@ module.exports = function (file, opts) {
       })
     }
   }
+
   function getRecord(offset, cb) {
     //read the whole block
     if(offset >= length) return cb()
@@ -128,6 +144,7 @@ module.exports = function (file, opts) {
         cb(null, buffer, block_start, record_start, length)
     })
   }
+
   function get (offset, cb) {
     getRecord(offset, function (err, buffer, block_start, record_start, length) {
       if (err) return cb(err)
@@ -139,11 +156,11 @@ module.exports = function (file, opts) {
   var write_timer
   var w = 0
   function next_write () {
+    if (!self.canWrite) return
     state = Append.writable(state)
     var buffer = Append.getWritable(state)
     raf.write(state.written, buffer, function (err, v) {
       if(err) throw err
-      var w = state.written
       state = Append.written(state)
 
       //TODO: some views could be eager, updating before the log is fully persisted
@@ -161,8 +178,10 @@ module.exports = function (file, opts) {
       }
 
       //waitingDrain moved from schedule_next_write
-      while(waitingDrain.length)
-        waitingDrain.shift()()
+      for (var i = 0, length = waitingDrain.length; i < length; ++i)
+        waitingDrain[i]()
+
+      waitingDrain = waitingDrain.slice(length)
 
       return schedule_next_write()
     })
@@ -261,6 +280,9 @@ module.exports = function (file, opts) {
     streams: [],
 
     onWrite: function () {},
+
+    // for tests
+    canWrite: true,
 
     onDrain: onLoad(function (fn) {
       if(!Append.hasWrite(state)) fn()
