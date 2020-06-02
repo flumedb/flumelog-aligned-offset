@@ -53,10 +53,12 @@ module.exports = function (file, opts) {
   })
 
   function onLoad (fn) {
-    return function (arg, cb) {
+    return function (arg, arg2, cb) {
+      if('function' === typeof arg2)
+        cb = arg2
       if(closed) return cb(new Error('closed'))
-      if(length === null) waiting.push(function () { fn(arg, cb) })
-      else return fn(arg, cb)
+      if(length === null) waiting.push(function () { fn(arg, arg2, cb) })
+      else return fn(arg, arg2, cb)
     }
   }
 
