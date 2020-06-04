@@ -33,6 +33,11 @@ pointer to the start of the padding, two bytes before that is
 the length of the record. Records and padding can always be written
 append only, without overwriting previous records.
 
+## Here be dragons
+
+Please note that the default value for adding data is sync = true
+unless specified. Which is how it works if combined with flumedb.
+
 ## License
 
 MIT
