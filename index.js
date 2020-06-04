@@ -13,7 +13,7 @@ module.exports = function (file, opts) {
   var raf = RAF(file)
   var closed = false
   var block = opts && opts.block || opts.blockSize || 65536
-  var length = null, waiting = [], waitingDrain = [], self, state
+  var length = null, waiting = [], waitingDrain = [], self, state = null
   var codec = opts && opts.codec || _codec
   var since = {value: undefined}
 
@@ -57,7 +57,7 @@ module.exports = function (file, opts) {
       if('function' === typeof arg2)
         cb = arg2
       if(closed) return cb(new Error('closed'))
-      if(length === null) waiting.push(function () { fn(arg, arg2, cb) })
+      if(length === null || state === null) waiting.push(function () { fn(arg, arg2, cb) })
       else return fn(arg, arg2, cb)
     }
   }
