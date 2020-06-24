@@ -21,7 +21,7 @@ module.exports = function (file, opts) {
     if(self.onError) self.onError(err)
     else throw err
   }
-
+  
   raf.stat(function (_, stat) {
     var len = stat ? stat.size : -1
     self.length = length = len == -1 ? 0 : len

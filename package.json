@@ -11,23 +11,23 @@
     "lru_cache": "^1.0.2",
     "ltgt": "^2.2.1",
     "obv": "0.0.1",
-    "push-stream": "^10.0.3",
-    "push-stream-to-pull-stream": "^1.0.3",
-    "polyraf": "^1.1.0"
+    "polyraf": "^1.1.0",
+    "push-stream": "^11.0.0",
+    "push-stream-to-pull-stream": "^1.0.3"
   },
   "devDependencies": {
     "bench-flumelog": "^2.0.0",
     "bipf": "^1.2.3",
     "flumecodec": "0.0.1",
-    "flumedb": "2",
+    "flumedb": "^2.1.8",
     "flumelog-offset": "^3.3.1",
-    "flumeview-level": "^3.0.13",
+    "flumeview-level": "^4.0.4",
     "hexpp": "^2.0.0",
     "looper": "^4.0.0",
     "pull-stream": "^3.6.9",
-    "tape": "^4.9.1",
-    "test-flumelog": "^1.0.0",
-    "test-flumeview-index": "^2.2.3"
+    "tape": "^5.0.1",
+    "test-flumelog": "^1.0.1",
+    "test-flumeview-index": "^2.3.1"
   },
   "scripts": {
     "test": "set -e; for t in test/*.js; do node $t; done"

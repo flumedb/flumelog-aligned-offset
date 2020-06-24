@@ -1,4 +1,3 @@
-
 var Flume = require('flumedb')
 var Index = require('flumeview-level')
 var codec = require('flumecodec')
