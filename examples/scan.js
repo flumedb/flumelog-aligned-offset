@@ -7,18 +7,50 @@ var Looper = require('looper')
 var raf = FlumeLogRaf(process.argv[2], {block: 64*1024})
 var binary = require('bipf')
 var path = require('path')
+var FastBitSet = require('fastbitset')
 
+var _timestamp = new Buffer('timestamp')
+var _author = new Buffer('author')
 var _type = new Buffer('type')
 var _channel = new Buffer('channel')
 var _content = new Buffer('content')
 var _value = new Buffer('value')
 var _post = new Buffer('post')
 var _text = new Buffer('text')
+
 var _channelValue = new Buffer('solarpunk')
+var _postValue = new Buffer('post')
+var _authorValue = new Buffer('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519')
 
 var start = Date.now()
 var count = 0
 var found = 0
+
+var channelBitset = new FastBitSet()
+var postBitset = new FastBitSet()
+var authorBitset = new FastBitSet()
+
+var sorted = [] // { seq, value, timestampSeekKey }
+var limit = 10
+function maintainLargestSort(item) {
+  if (sorted.length < limit) {
+    sorted.push(item)
+    sorted.sort(function (a, b) {
+      return binary.compare(a.value, a.timestampSeekKey,
+                            b.value, b.timestampSeekKey)
+    })
+  }
+  else {
+    if (binary.compare(item.value, item.timestampSeekKey,
+                       sorted[0].value, sorted[0].timestampSeekKey)) {
+      sorted[0] = item
+      sorted.sort(function (a, b) {
+        return binary.compare(a.value, a.timestampSeekKey,
+                              b.value, b.timestampSeekKey)
+      })
+    }
+  }
+}
 
 raf.stream({}).pipe({
   paused: false,
@@ -29,27 +61,61 @@ raf.stream({}).pipe({
 
     var p = 0 // note you pass in p!
     p = binary.seekKey(buffer, p, _value)
+
+    /*
+    var p3 = binary.seekKey(buffer, p, _author)
+    if(~p3) {
+      if(binary.compareString(buffer, p3, _authorValue) === 0) {
+        authorBitset.add(seq)
+
+        data.timestampSeekKey = binary.seekKey(buffer, p, _timestamp)
+        // here for testing, should be done after filters
+        maintainLargestSort(data)
+      }
+    }
+    */
+
     if(~p) {
       p = binary.seekKey(buffer, p, _content)
       if(~p) {
+        var p2 = binary.seekKey(buffer, p, _type)
+        if(~p2) {
+          if(binary.compareString(buffer, p2, _postValue) === 0) {
+            postBitset.add(seq)
+
+            data.timestampSeekKey = binary.seekKey(buffer, p, _timestamp)
+            // here for testing, should be done after filters
+            // this is 80ms on 114k!
+            maintainLargestSort(data)
+          }
+        }
+
+        /*
         p = binary.seekKey(buffer, p, _channel)
         if(~p) {
-          if(binary.compareString(buffer, p, _channelValue) === 0)
+          if(binary.compareString(buffer, p, _channelValue) === 0) {
+            channelBitset.add(seq)
+            //console.log(seq)
             found++
+          }
         }
+        */
       }
     }
   },
   end: () => {
     console.log(`time: ${Date.now()-start}ms, total items: ${count}, found: ${found}`)
+    console.log(postBitset.size())
+    console.log(channelBitset.size())
+    console.log(authorBitset.size())
+    console.log(sorted.map(x => binary.decode(x.value, 0)))
+    return
+
+    console.time("intersect")
+    // post + channel: 25 -> 136ms (new)
+    // maybe its fast enough just to load the indexes when needed and use direct intersection
+    var both = authorBitset.new_intersection(channelBitset)
+    console.timeEnd("intersect")
+    console.log(both.size())
   }
 })
-
-
-
-
-
-
-
-
-

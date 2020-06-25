@@ -8,6 +8,7 @@
     "url": "git://github.com/dominictarr/flumelog-aligned-offset.git"
   },
   "dependencies": {
+    "fastbitset": "^0.2.8",
     "lru_cache": "^1.0.2",
     "ltgt": "^2.2.1",
     "obv": "0.0.1",
