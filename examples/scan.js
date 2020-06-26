@@ -30,17 +30,20 @@ var channelBitset = new FastBitSet()
 var postBitset = new FastBitSet()
 var authorBitset = new FastBitSet()
 
-var intOffset = new Uint32Array(1 * 1000 * 1000) // FIXME: size
+var intOffset = new Uint32Array(1 * 1000 * 1000) // FIXME: fixed size
 
 function saveTypedArray(name, arr)
 {
-  fs.writeFileSync(name + ".index", Buffer.from(arr))
+  fs.writeFileSync(name + ".index", Buffer.from(arr.buffer))
 }
 
-function loadTypedArray(name, arr)
+function loadTypedArray(name)
 {
-  Uint32Array.from(fs.readFileSync(name + ".index"))
+  var buf = fs.readFileSync(name + ".index")
+  return new Uint32Array(buf.buffer, buf.offset, buf.byteLength/4)
 }
+
+//var test = loadTypedArray("offset")
 
 // boundedPriorityQueue
 var sorted = [] // { seq, value, timestampSeekKey }
@@ -114,15 +117,15 @@ raf.stream({}).pipe({
   },
   end: () => {
     console.log(`time: ${Date.now()-start}ms, total items: ${count}`)
-    console.log(postBitset.size())
-    console.log(channelBitset.size())
-    console.log(authorBitset.size())
-    console.log(sorted.map(x => binary.decode(x.value, 0)))
+    console.log("post", postBitset.size())
+    console.log("channel solarpunk", channelBitset.size())
+    console.log("arj author", authorBitset.size())
+    //console.log(sorted.map(x => binary.decode(x.value, 0)))
 
     console.time("intersect")
     var both = authorBitset.new_intersection(channelBitset)
     console.timeEnd("intersect") // 2.5ms!
-    console.log(both.size())
+    console.log("results:", both.size())
 
     saveTypedArray("offset", intOffset) // 1mb
     saveTypedArray("post", postBitset.words) // 20kb!
