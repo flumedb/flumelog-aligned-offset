@@ -3,10 +3,8 @@
 // no parsing. not really much different than just dumping the file!!!
 
 var FlumeLogRaf = require('../')
-var Looper = require('looper')
 var raf = FlumeLogRaf(process.argv[2], {block: 64*1024})
 var binary = require('bipf')
-var path = require('path')
 var FastBitSet = require('typedfastbitset')
 var fs = require('fs')
 var push = require('push-stream')
@@ -45,30 +43,6 @@ function loadTypedArray(name)
 }
 
 //var test = loadTypedArray("offset")
-
-// boundedPriorityQueue
-// this is 80ms on 114k!
-var sorted = [] // { seq, value, timestampSeekKey }
-var limit = 10
-function maintainLargestSort(item) {
-  if (sorted.length < limit) {
-    sorted.push(item)
-    sorted.sort(function (a, b) {
-      return binary.compare(a.value, a.timestampSeekKey,
-                            b.value, b.timestampSeekKey)
-    })
-  }
-  else {
-    if (binary.compare(item.value, item.timestampSeekKey,
-                       sorted[0].value, sorted[0].timestampSeekKey)) {
-      sorted[0] = item
-      sorted.sort(function (a, b) {
-        return binary.compare(a.value, a.timestampSeekKey,
-                              b.value, b.timestampSeekKey)
-      })
-    }
-  }
-}
 
 raf.stream({}).pipe({
   paused: false,
@@ -113,16 +87,19 @@ raf.stream({}).pipe({
     console.log("arj author", authorBitset.size())
 
     console.time("intersect")
-    var both = authorBitset.new_intersection(channelBitset)
+    var both = authorBitset.new_intersection(postBitset)
     console.timeEnd("intersect") // 2.5ms!
     console.log("results:", both.size())
+
+    // this is 80ms on 114k!
+    var queue = require('./bounded-priority-queue')(10)
 
     function sortData(data) {
       var p = 0 // note you pass in p!
       p = binary.seekKey(data.value, p, _value)
       data.timestampSeekKey = binary.seekKey(data.value, p, _timestamp)
 
-      maintainLargestSort(data)
+      queue.add(data)
     }
 
     const util = require('util')
@@ -140,7 +117,7 @@ raf.stream({}).pipe({
       }),
       push.collect(() => {
         console.timeEnd("get values and sort top 10")
-        sorted.map(x => binary.decode(x.value, 0)).forEach(x => {
+        queue.sorted.map(x => binary.decode(x.value, 0)).forEach(x => {
           console.log(util.inspect(x, false, null, true /* enable colors */))
         })
       })
