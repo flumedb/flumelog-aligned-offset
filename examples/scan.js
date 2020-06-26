@@ -9,6 +9,7 @@ var binary = require('bipf')
 var path = require('path')
 var FastBitSet = require('typedfastbitset')
 var fs = require('fs')
+var push = require('push-stream')
 
 var _timestamp = new Buffer('timestamp')
 var _author = new Buffer('author')
@@ -46,6 +47,7 @@ function loadTypedArray(name)
 //var test = loadTypedArray("offset")
 
 // boundedPriorityQueue
+// this is 80ms on 114k!
 var sorted = [] // { seq, value, timestampSeekKey }
 var limit = 10
 function maintainLargestSort(item) {
@@ -81,11 +83,8 @@ raf.stream({}).pipe({
 
     var p3 = binary.seekKey(buffer, p, _author)
     if(~p3) {
-      if(binary.compareString(buffer, p3, _authorValue) === 0) {
+      if(binary.compareString(buffer, p3, _authorValue) === 0)
         authorBitset.add(count)
-
-        data.timestampSeekKey = binary.seekKey(buffer, p, _timestamp)
-      }
     }
 
     if(~p) {
@@ -93,22 +92,14 @@ raf.stream({}).pipe({
       if(~p) {
         var p2 = binary.seekKey(buffer, p, _type)
         if(~p2) {
-          if(binary.compareString(buffer, p2, _postValue) === 0) {
+          if(binary.compareString(buffer, p2, _postValue) === 0)
             postBitset.add(count)
-
-            data.timestampSeekKey = binary.seekKey(buffer, p, _timestamp)
-            // here for testing, should be done after filters
-            // this is 80ms on 114k!
-            maintainLargestSort(data)
-          }
         }
 
         p = binary.seekKey(buffer, p, _channel)
         if(~p) {
-          if(binary.compareString(buffer, p, _channelValue) === 0) {
+          if(binary.compareString(buffer, p, _channelValue) === 0)
             channelBitset.add(count)
-            //console.log(seq)
-          }
         }
       }
     }
@@ -120,12 +111,40 @@ raf.stream({}).pipe({
     console.log("post", postBitset.size())
     console.log("channel solarpunk", channelBitset.size())
     console.log("arj author", authorBitset.size())
-    //console.log(sorted.map(x => binary.decode(x.value, 0)))
 
     console.time("intersect")
     var both = authorBitset.new_intersection(channelBitset)
     console.timeEnd("intersect") // 2.5ms!
     console.log("results:", both.size())
+
+    function sortData(data) {
+      var p = 0 // note you pass in p!
+      p = binary.seekKey(data.value, p, _value)
+      data.timestampSeekKey = binary.seekKey(data.value, p, _timestamp)
+
+      maintainLargestSort(data)
+    }
+
+    const util = require('util')
+
+    console.time("get values and sort top 10")
+
+    push(
+      push.values(both.array()),
+      push.asyncMap((val, cb) => {
+        var seq = intOffset[val]
+        raf.get(seq, (err, value) => {
+          sortData({ seq, value })
+          cb()
+        })
+      }),
+      push.collect(() => {
+        console.timeEnd("get values and sort top 10")
+        sorted.map(x => binary.decode(x.value, 0)).forEach(x => {
+          console.log(util.inspect(x, false, null, true /* enable colors */))
+        })
+      })
+    )
 
     saveTypedArray("offset", intOffset) // 1mb
     saveTypedArray("post", postBitset.words) // 20kb!
