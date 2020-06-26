@@ -8,6 +8,7 @@ var raf = FlumeLogRaf(process.argv[2], {block: 64*1024})
 var binary = require('bipf')
 var path = require('path')
 var FastBitSet = require('typedfastbitset')
+var fs = require('fs')
 
 var _timestamp = new Buffer('timestamp')
 var _author = new Buffer('author')
@@ -24,12 +25,24 @@ var _authorValue = new Buffer('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed2
 
 var start = Date.now()
 var count = 0
-var found = 0
 
 var channelBitset = new FastBitSet()
 var postBitset = new FastBitSet()
 var authorBitset = new FastBitSet()
 
+var intOffset = new Uint32Array(1 * 1000 * 1000) // FIXME: size
+
+function saveTypedArray(name, arr)
+{
+  fs.writeFileSync(name + ".index", Buffer.from(arr))
+}
+
+function loadTypedArray(name, arr)
+{
+  Uint32Array.from(fs.readFileSync(name + ".index"))
+}
+
+// boundedPriorityQueue
 var sorted = [] // { seq, value, timestampSeekKey }
 var limit = 10
 function maintainLargestSort(item) {
@@ -57,23 +70,20 @@ raf.stream({}).pipe({
   write: function (data) {
     var seq = data.seq
     var buffer = data.value
-    count++
+
+    intOffset[count] = seq
 
     var p = 0 // note you pass in p!
     p = binary.seekKey(buffer, p, _value)
 
-    /*
     var p3 = binary.seekKey(buffer, p, _author)
     if(~p3) {
       if(binary.compareString(buffer, p3, _authorValue) === 0) {
-        authorBitset.add(seq)
+        authorBitset.add(count)
 
         data.timestampSeekKey = binary.seekKey(buffer, p, _timestamp)
-        // here for testing, should be done after filters
-        maintainLargestSort(data)
       }
     }
-    */
 
     if(~p) {
       p = binary.seekKey(buffer, p, _content)
@@ -81,7 +91,7 @@ raf.stream({}).pipe({
         var p2 = binary.seekKey(buffer, p, _type)
         if(~p2) {
           if(binary.compareString(buffer, p2, _postValue) === 0) {
-            postBitset.add(seq)
+            postBitset.add(count)
 
             data.timestampSeekKey = binary.seekKey(buffer, p, _timestamp)
             // here for testing, should be done after filters
@@ -90,32 +100,33 @@ raf.stream({}).pipe({
           }
         }
 
-        /*
         p = binary.seekKey(buffer, p, _channel)
         if(~p) {
           if(binary.compareString(buffer, p, _channelValue) === 0) {
-            channelBitset.add(seq)
+            channelBitset.add(count)
             //console.log(seq)
-            found++
           }
         }
-        */
       }
     }
+
+    count++
   },
   end: () => {
-    console.log(`time: ${Date.now()-start}ms, total items: ${count}, found: ${found}`)
+    console.log(`time: ${Date.now()-start}ms, total items: ${count}`)
     console.log(postBitset.size())
     console.log(channelBitset.size())
     console.log(authorBitset.size())
     console.log(sorted.map(x => binary.decode(x.value, 0)))
-    return
 
     console.time("intersect")
-    // post + channel: 25 -> 136ms (new)
-    // maybe its fast enough just to load the indexes when needed and use direct intersection
     var both = authorBitset.new_intersection(channelBitset)
-    console.timeEnd("intersect")
+    console.timeEnd("intersect") // 2.5ms!
     console.log(both.size())
+
+    saveTypedArray("offset", intOffset) // 1mb
+    saveTypedArray("post", postBitset.words) // 20kb!
+    saveTypedArray("author", authorBitset.words)
+    saveTypedArray("channel", channelBitset.words)
   }
 })
