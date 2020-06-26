@@ -7,7 +7,7 @@ var Looper = require('looper')
 var raf = FlumeLogRaf(process.argv[2], {block: 64*1024})
 var binary = require('bipf')
 var path = require('path')
-var FastBitSet = require('fastbitset')
+var FastBitSet = require('typedfastbitset')
 
 var _timestamp = new Buffer('timestamp')
 var _author = new Buffer('author')

@@ -14,7 +14,8 @@
     "obv": "0.0.1",
     "polyraf": "^1.1.0",
     "push-stream": "^11.0.0",
-    "push-stream-to-pull-stream": "^1.0.3"
+    "push-stream-to-pull-stream": "^1.0.3",
+    "typedfastbitset": "^0.1.5"
   },
   "devDependencies": {
     "bench-flumelog": "^2.0.0",
