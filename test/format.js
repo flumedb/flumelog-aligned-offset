@@ -1,4 +1,3 @@
-
 var tape = require('tape')
 var fs = require('fs')
 var FlumeLogRaf = require('../')
@@ -99,5 +98,3 @@ tape('stream', function (t) {
     }
   })
 })
-
-

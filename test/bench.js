@@ -1,5 +1,3 @@
-
-
 var FlumeLog = require('../')
 var codec = require('flumecodec')
 var toCompat = require('../compat')

@@ -87,5 +87,3 @@ tape('reverse', function (t) {
     t.end()
   }))
 })
-
-
