@@ -86,11 +86,18 @@ module.exports = function (file, opts) {
     var file_start = i*block
     //insert cache here...
 
-    if(file_start == state.start)
+    if (file_start == state.start)
       return cb(null, state.buffers[0])
     else if (file_start >= state.writing && Append.isWriting(state))
       waitingDrain.push(() => {
-        readFromRAF(file_start, i, cb)
+        if (file_start == state.start)
+          cb(null, state.buffers[0])
+        else
+          readFromRAF(file_start, i, cb)
+      })
+    else if (file_start >= state.written) // reading faster than write
+      waitingDrain.push(() => {
+        getBlock(i, cb)
       })
     else
       readFromRAF(file_start, i, cb)
