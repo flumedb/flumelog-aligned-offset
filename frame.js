@@ -49,7 +49,12 @@ module.exports = {
   },
 
   getLastRecord: function (block, buffer, offset) {
-    var start = buffer.readUInt32LE(block - 4)
+    var fromEnd = 4
+    var start = buffer.readUInt32LE(block - fromEnd)
+    while (start == 0 && fromEnd < block) { // find the last record
+      fromEnd += 4
+      start = buffer.readUInt32LE(block - fromEnd)
+    }
     return module.exports.getPreviousRecord(block, buffer, offset-block + start)
   },
 
